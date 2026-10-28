@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A shortened SPL document, in the shape DailyMed serves them: two strengths of one tablet (one with a photo, one repackaged), a two-tone capsule
+     and a liquid with no characteristics. The values are made up. -->
+<document xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <subject>
+            <manufacturedProduct>
+              <manufacturedProduct>
+                <code code="12345-101" codeSystem="2.16.840.1.113883.6.69"/>
+                <name>EXAMPLOPRIL</name>
+                <formCode code="C42998" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="TABLET"/>
+                <asContent>
+                  <containerPackagedProduct>
+                    <code code="12345-101-30" codeSystem="2.16.840.1.113883.6.69"/>
+                  </containerPackagedProduct>
+                </asContent>
+                <ingredient classCode="ACTIB">
+                  <quantity>
+                    <numerator unit="mg" value="10"/>
+                    <denominator unit="1" value="1"/>
+                  </quantity>
+                  <ingredientSubstance>
+                    <name>EXAMPLOPRIL</name>
+                  </ingredientSubstance>
+                </ingredient>
+                <ingredient classCode="IACT">
+                  <ingredientSubstance>
+                    <name>MANNITOL</name>
+                  </ingredientSubstance>
+                </ingredient>
+              </manufacturedProduct>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLCOLOR" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48325" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="white" xsi:type="CE">
+                    <originalText>white to off-white</originalText>
+                  </value>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSIZE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value unit="mm" value="8" xsi:type="PQ"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSHAPE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48348" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="ROUND" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSCORE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value value="2" xsi:type="INT"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLIMPRINT" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value xsi:type="ST">EX;10</value>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLIMAGE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value mediaType="image/jpeg" xsi:type="ED">
+                    <reference value="EX10.jpg"/>
+                  </value>
+                </characteristic>
+              </subjectOf>
+            </manufacturedProduct>
+          </subject>
+          <subject>
+            <manufacturedProduct>
+              <manufacturedProduct>
+                <code code="12345-102" codeSystem="2.16.840.1.113883.6.69"/>
+                <name>EXAMPLOPRIL</name>
+                <formCode code="C42998" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="TABLET"/>
+                <asEquivalentEntity classCode="EQUIV">
+                  <code code="C64637" codeSystem="2.16.840.1.113883.3.26.1.1"/>
+                  <definingMaterialKind>
+                    <code code="99999-202" codeSystem="2.16.840.1.113883.6.69"/>
+                  </definingMaterialKind>
+                </asEquivalentEntity>
+                <ingredient classCode="ACTIB">
+                  <quantity>
+                    <numerator unit="mg" value="20"/>
+                    <denominator unit="1" value="1"/>
+                  </quantity>
+                  <ingredientSubstance>
+                    <name>EXAMPLOPRIL</name>
+                  </ingredientSubstance>
+                </ingredient>
+              </manufacturedProduct>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLCOLOR" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48331" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="ORANGE" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSHAPE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48345" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="OVAL" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSIZE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value unit="mm" value="11.5" xsi:type="PQ"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLIMPRINT" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value xsi:type="ST">EX20</value>
+                </characteristic>
+              </subjectOf>
+            </manufacturedProduct>
+          </subject>
+          <subject>
+            <manufacturedProduct>
+              <manufacturedProduct>
+                <code code="12345-201" codeSystem="2.16.840.1.113883.6.69"/>
+                <name>EXAMPLOPRIL AND DIURETICIDE</name>
+                <formCode code="C25158" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="CAPSULE"/>
+                <ingredient classCode="ACTIM">
+                  <quantity>
+                    <numerator unit="mg" value="20"/>
+                    <denominator unit="1" value="1"/>
+                  </quantity>
+                  <ingredientSubstance>
+                    <name>EXAMPLOPRIL</name>
+                  </ingredientSubstance>
+                </ingredient>
+                <ingredient classCode="ACTIB">
+                  <quantity>
+                    <numerator unit="mg" value="12.5"/>
+                    <denominator unit="1" value="1"/>
+                  </quantity>
+                  <ingredientSubstance>
+                    <name>DIURETICIDE</name>
+                  </ingredientSubstance>
+                </ingredient>
+              </manufacturedProduct>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLCOLOR" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48333" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="BLUE" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLCOLOR" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48325" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="WHITE" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSHAPE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value code="C48336" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="CAPSULE" xsi:type="CE"/>
+                </characteristic>
+              </subjectOf>
+              <subjectOf>
+                <characteristic classCode="OBS">
+                  <code code="SPLSIZE" codeSystem="2.16.840.1.113883.1.11.19255"/>
+                  <value unit="mm" value="18" xsi:type="PQ"/>
+                </characteristic>
+              </subjectOf>
+            </manufacturedProduct>
+          </subject>
+          <subject>
+            <manufacturedProduct>
+              <manufacturedProduct>
+                <code code="12345-301" codeSystem="2.16.840.1.113883.6.69"/>
+                <name>EXAMPLOPRIL</name>
+                <formCode code="C42986" codeSystem="2.16.840.1.113883.3.26.1.1" displayName="SOLUTION"/>
+                <ingredient classCode="ACTIB">
+                  <quantity>
+                    <numerator unit="mg" value="1"/>
+                    <denominator unit="mL" value="1"/>
+                  </quantity>
+                  <ingredientSubstance>
+                    <name>EXAMPLOPRIL</name>
+                  </ingredientSubstance>
+                </ingredient>
+              </manufacturedProduct>
+            </manufacturedProduct>
+          </subject>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</document>

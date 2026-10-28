@@ -1,0 +1,335 @@
+<UserControl x:Class="Strongthium.HealthReminder.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Strongthium.HealthReminder">
+  <!-- Like Windows' own Settings: a card a setting, its icon, what it is, and its control on the right. -->
+  <UserControl.Resources>
+    <Style x:Key="Row" TargetType="Border" BasedOn="{StaticResource Card}">
+      <Setter Property="Padding" Value="16,12" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="MinHeight" Value="64" />
+    </Style>
+    <Style x:Key="Section" TargetType="TextBlock" BasedOn="{StaticResource Heading}">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="Margin" Value="2,24,0,8" />
+    </Style>
+    <Style x:Key="RowIcon" TargetType="TextBlock" BasedOn="{StaticResource Icon}">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Margin" Value="4,0,18,0" />
+    </Style>
+    <Style x:Key="RowTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28,36,36" MaxWidth="1000">
+      <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
+
+      <!-- Sounds -->
+      <TextBlock Text="Sounds" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE767;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="Volume" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="How loud reminders start; each sound can be tried below" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <Slider x:Name="VolumeSlider" Minimum="5" Maximum="100" Width="200" VerticalAlignment="Center" ValueChanged="Volume_Changed" />
+            <TextBlock x:Name="VolumeText" VerticalAlignment="Center" Width="40" TextAlignment="Right" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- One a group, so that medication, a check and a meal sound different. -->
+      <ItemsControl x:Name="GroupSounds" Focusable="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type local:GroupSound}">
+            <Border Style="{StaticResource Row}">
+              <StackPanel>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <Border Style="{StaticResource Tile}" Width="34" Height="34" Padding="3" Margin="0,0,14,0"
+                          Background="{Binding Kind, Converter={StaticResource KindBrush}, ConverterParameter=tint}">
+                    <local:PillView Kind="{Binding Kind}" Appearance="{x:Static local:TodayPage.SamplePill}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}" />
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource Caption}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox ItemsSource="{Binding Sounds}" SelectedIndex="{Binding SoundIndex}" Width="230" Margin="0,0,8,0" />
+                    <ComboBox ItemsSource="{Binding Repeats}" SelectedIndex="{Binding RepeatIndex}" Width="160" Margin="0,0,8,0" />
+                    <Button Click="Play_Click" ToolTip="Play it for a few seconds" Padding="10,6">
+                      <TextBlock Text="&#xE768;" Style="{StaticResource Icon}" FontSize="14" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="48,10,0,0" Visibility="{Binding IsCustom, Converter={StaticResource VisibleIf}}">
+                  <Button Content="Choose a .wav file…" Click="ChooseSound_Click" Margin="0,0,10,0" />
+                  <TextBlock Text="{Binding FileText}" Style="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE995;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="Get louder" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="Each time a reminder comes back unanswered, 15% louder, up to full volume" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <CheckBox Grid.Column="2" x:Name="EscalateBox" VerticalAlignment="Center" Click="Escalate_Changed" />
+        </Grid>
+      </Border>
+
+      <!-- The reminder window -->
+      <TextBlock Text="When something is due" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xEA8F;" Style="{StaticResource RowIcon}" VerticalAlignment="Top" Margin="4,2,18,0" />
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="How hard the reminder insists" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="It always comes up in the middle of the screen, in front of everything. Until it's answered:" Style="{StaticResource Caption}" Margin="0,0,0,6" />
+            <RadioButton x:Name="NagGentle" Click="Nag_Changed" Margin="0,4">
+              <TextBlock TextWrapping="Wrap"><Run Text="Gentle" FontWeight="SemiBold" /><Run Text=": it stays where it is." /></TextBlock>
+            </RadioButton>
+            <RadioButton x:Name="NagPersistent" Click="Nag_Changed" Margin="0,4">
+              <TextBlock TextWrapping="Wrap"><Run Text="Persistent" FontWeight="SemiBold" /><Run Text=": every 30 seconds it comes back to the middle of the screen, in front of everything, and flashes in the taskbar." /></TextBlock>
+            </RadioButton>
+            <RadioButton x:Name="NagInsistent" Click="Nag_Changed" Margin="0,4">
+              <TextBlock TextWrapping="Wrap"><Run Text="Insistent" FontWeight="SemiBold" /><Run Text=": every 10 seconds, shaking and flashing red, with the rest of the screen darkened, and it can't be minimized. Only answering, snoozing or skipping puts it away." /></TextBlock>
+            </RadioButton>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE916;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="Snooze for" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="How long Snooze puts a reminder off" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="SnoozeBox" Width="170" VerticalAlignment="Center" SelectionChanged="Snooze_Changed" />
+        </Grid>
+      </Border>
+
+      <!-- Video -->
+      <TextBlock Text="Video evidence" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE722;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Camera" Style="{StaticResource RowTitle}" />
+            <TextBlock Style="{StaticResource Caption}"
+                       Text="A reminder set to record a video opens it when answered. Every frame shows the date, the time and what is being taken." />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <ComboBox x:Name="CameraBox" Width="240" SelectionChanged="Camera_Changed" Margin="0,0,8,0" />
+            <Button Click="FindCameras_Click" ToolTip="Look for cameras again" Padding="10,6">
+              <TextBlock Text="&#xE72C;" Style="{StaticResource Icon}" FontSize="14" />
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE714;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="Stop recording after" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="The video is saved then, if Stop and save wasn't chosen first" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="VideoLengthBox" Width="170" VerticalAlignment="Center" SelectionChanged="VideoLength_Changed" />
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE8B7;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="The videos" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="They stay on this computer. The History page plays them, and notices if one has been changed since." Style="{StaticResource Caption}" />
+          </StackPanel>
+          <Button Grid.Column="2" Content="Open the folder" VerticalAlignment="Center" Click="OpenVideos_Click" />
+        </Grid>
+      </Border>
+
+      <!-- Measurements -->
+      <TextBlock Text="Measurements" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xEC32;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Drinks" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="What water and other drinks are measured in, on reminders and in the plan" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="DrinkUnitBox" Width="240" VerticalAlignment="Center" SelectionChanged="DrinkUnit_Changed">
+            <ComboBoxItem Content="Millilitres (mL, L)" />
+            <ComboBoxItem Content="Fluid ounces (fl oz)" />
+            <ComboBoxItem Content="Cups" />
+          </ComboBox>
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE7BF;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Groceries" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="Amounts can be typed in any unit; all liquids are shown in one, all weights in another, and prices compared per litre or kilogram, or per gallon or pound" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="MeasuresBox" Width="240" VerticalAlignment="Center" SelectionChanged="Measures_Changed">
+            <ComboBoxItem Content="Metric (mL, L, g, kg)" />
+            <ComboBoxItem Content="U.S. (fl oz, gal, oz, lb)" />
+          </ComboBox>
+        </Grid>
+      </Border>
+
+      <!-- Claude -->
+      <TextBlock Text="Help from Claude" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE945;" Style="{StaticResource RowIcon}" VerticalAlignment="Top" Margin="4,2,18,0" />
+          <StackPanel Grid.Column="1">
+            <CheckBox x:Name="ClaudeBox" Click="Claude_Changed">
+              <TextBlock TextWrapping="Wrap"><Run Text="Read grocery photos and suggest meals with Claude" FontWeight="SemiBold" /><Run Text=": photos of your fridge, cupboard, groceries or a receipt become the list of what's in your kitchen, and Claude suggests meals for one from it, using first what won't keep." /></TextBlock>
+            </CheckBox>
+            <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="28,6,0,0"
+                       Text="When it's used, the photos, the list of food in your kitchen and the meal's calories are sent to Anthropic, the maker of Claude; nothing about your medication or health. It needs your own Anthropic API key (console.anthropic.com), and what's used is billed to that account. The key is kept on this computer, encrypted for your Windows account." />
+            <StackPanel Orientation="Horizontal" Margin="28,10,0,0">
+              <PasswordBox x:Name="KeyBox" Width="320" VerticalContentAlignment="Center" ToolTip="Your Anthropic API key, sk-ant-…" />
+              <Button Content="Save the key" Click="SaveKey_Click" Margin="8,0,0,0" Padding="12,5" />
+              <Button x:Name="ForgetKeyButton" Content="Remove it" Click="ForgetKey_Click" Margin="8,0,0,0" Padding="12,5" />
+            </StackPanel>
+            <TextBlock x:Name="KeyText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="28,6,0,0" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Start-up -->
+      <TextBlock Text="Start-up and data" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE7E8;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="Start when I sign in to Windows" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="It starts in the tray, and comes up when something is due" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <CheckBox Grid.Column="2" x:Name="StartAtSignIn" VerticalAlignment="Center" Click="StartAtSignIn_Changed" />
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE711;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Closing the window" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="In the tray it keeps ringing when something is due; after quitting, nothing rings until it's opened again" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ComboBox Grid.Column="2" x:Name="CloseBox" Width="240" VerticalAlignment="Center" SelectionChanged="Close_Changed">
+            <ComboBoxItem Content="Ask each time" />
+            <ComboBoxItem Content="Keep it running in the tray" />
+            <ComboBoxItem Content="Quit Health Reminder" />
+          </ComboBox>
+        </Grid>
+      </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE72E;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Your data" Style="{StaticResource RowTitle}" />
+            <TextBlock x:Name="DataFolder" Style="{StaticResource Caption}" />
+          </StackPanel>
+          <Button Grid.Column="2" Content="Open the folder" VerticalAlignment="Center" Click="OpenData_Click" />
+        </Grid>
+      </Border>
+
+      <!-- About -->
+      <TextBlock Text="About" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Card}">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <Image x:Name="Logo" Width="32" Height="32" Margin="0,0,12,0" />
+            <StackPanel>
+              <TextBlock Text="Health Reminder" FontWeight="SemiBold" FontSize="15" />
+              <TextBlock x:Name="VersionText" Style="{StaticResource Caption}" />
+            </StackPanel>
+          </StackPanel>
+          <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                     Text="What a pill looks like, and its photo, come from the labels manufacturers file with the U.S. FDA (DailyMed, U.S. National Library of Medicine) and from Health Canada's Drug Product Database; RxNorm says which products are the same drug. It is a help, not a guarantee: if a pill doesn't match, check with your pharmacist before taking it." />
+          <TextBlock TextWrapping="Wrap" Style="{StaticResource Muted}"
+                     Text="Health Reminder is not a medical device. Don't rely on it alone for medication that is dangerous to miss." />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

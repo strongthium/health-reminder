@@ -1,0 +1,45 @@
+<Window x:Class="Strongthium.HealthReminder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Health Reminder"
+        Width="1060" Height="780" MinWidth="780" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+  <!-- Laid out like Windows' own Settings: the pages down the side, the page beside them on a layer of its own. Each
+       page is made the first time it's shown, so that the window comes up quickly. -->
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="236" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <DockPanel Margin="10,6,10,14">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12,6,0,22">
+        <Image x:Name="Logo" Width="30" Height="30" />
+        <TextBlock Text="Health Reminder" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0" />
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="14,0,4,0">
+        <TextBlock Text="&#xE946;" Style="{StaticResource Icon}" FontSize="14" VerticalAlignment="Top" Margin="0,1,10,0"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        <TextBlock Style="{StaticResource Caption}" Width="176"
+                   Text="Reminders ring while Health Reminder runs in the tray. Quit is in the tray icon's menu." />
+      </StackPanel>
+      <!-- In one panel, so that they are one group of choices. -->
+      <StackPanel x:Name="Nav">
+        <RadioButton x:Name="TodayNav" Style="{StaticResource NavItem}" Tag="&#xE787;" Content="Today" Checked="Nav_Checked" />
+        <RadioButton x:Name="RemindersNav" Style="{StaticResource NavItem}" Tag="&#xE8FD;" Content="Reminders" Checked="Nav_Checked" />
+        <RadioButton x:Name="EatDrinkNav" Style="{StaticResource NavItem}" Tag="&#xEC32;" Content="Eat &amp; drink" Checked="Nav_Checked" />
+        <RadioButton x:Name="MenuNav" Style="{StaticResource NavItem}" Tag="&#xE8F1;" Content="Menu" Checked="Nav_Checked" />
+        <RadioButton x:Name="GroceriesNav" Style="{StaticResource NavItem}" Tag="&#xE7BF;" Content="Groceries" Checked="Nav_Checked" />
+        <RadioButton x:Name="ExerciseNav" Style="{StaticResource NavItem}" Tag="&#xE805;" Content="Exercise" Checked="Nav_Checked" />
+        <RadioButton x:Name="SmokingNav" Style="{StaticResource NavItem}" Tag="&#xE916;" Content="Smoking" Checked="Nav_Checked" />
+        <RadioButton x:Name="HistoryNav" Style="{StaticResource NavItem}" Tag="&#xE81C;" Content="History" Checked="Nav_Checked" />
+        <RadioButton x:Name="SettingsNav" Style="{StaticResource NavItem}" Tag="&#xE713;" Content="Settings" Checked="Nav_Checked" />
+      </StackPanel>
+    </DockPanel>
+
+    <Border Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
+      <ContentControl x:Name="Page" Focusable="False" IsTabStop="False" />
+    </Border>
+  </Grid>
+</Window>

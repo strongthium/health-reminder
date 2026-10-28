@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything of health-reminder that isn't the window: the medications and their schedule (SQLite), what each pill
+       looks like (DailyMed), and which doses are due. Kept apart from the UI so that tests/ can run it headless. -->
+  <PropertyGroup>
+    <RootNamespace>Strongthium.HealthReminder</RootNamespace>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HealthReminder.Tests" />
+  </ItemGroup>
+</Project>

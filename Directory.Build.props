@@ -1,0 +1,17 @@
+<Project>
+  <!-- Shared by every project of health-reminder. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Product>health-reminder</Product>
+    <Company>Strongthium</Company>
+    <Copyright>Copyright (c) 2026 Strongthium</Copyright>
+    <!-- The version is in VERSION, at the top of the repository: build.ps1 -Bump changes it. -->
+    <Version>$([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)VERSION).Trim())</Version>
+    <!-- The program records where it was built (in its debug paths) as /_/, not the folder on the computer that built it. -->
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,36 @@
+<Window x:Class="Strongthium.HealthReminder.RecordWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Record taking it"
+        Width="780" Height="680" MinWidth="520" MinHeight="460"
+        WindowStartupLocation="CenterOwner"
+        Topmost="True">
+  <DockPanel Margin="20">
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <TextBlock Text="Record yourself taking it" Style="{StaticResource Title}" />
+      <TextBlock x:Name="WhatText" TextWrapping="Wrap" FontSize="15" Margin="0,4,0,0" />
+    </StackPanel>
+
+    <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <Button Grid.Column="1" x:Name="WithoutButton" Content="Done, without a video" Margin="10,0,0,0" Visibility="Collapsed" Click="Without_Click" />
+      <Button Grid.Column="2" Content="Cancel" Margin="10,0,0,0" Click="Cancel_Click" />
+      <Button Grid.Column="3" x:Name="StopButton" Content="Stop and save" Style="{DynamicResource AccentButtonStyle}" FontWeight="SemiBold"
+              Padding="22,8" Margin="10,0,0,0" IsEnabled="False" Click="Stop_Click" />
+    </Grid>
+
+    <Border CornerRadius="10" Background="Black" ClipToBounds="True">
+      <Grid>
+        <Image x:Name="Preview" Stretch="Uniform" />
+        <TextBlock x:Name="Placeholder" Text="Starting the camera…" Foreground="White" FontSize="16"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="20" />
+      </Grid>
+    </Border>
+  </DockPanel>
+</Window>

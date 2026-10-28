@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- health-reminder: rings when a medication, an injection, a check, a meal or a drink is due, and shows what the pill
+       looks like (DailyMed's description and photo), so the right one gets taken. Windows only, in WPF with Windows'
+       own Fluent theme, so the program itself is small: everything it draws with is in the .NET Desktop Runtime.
+       Published as one file for x64 PCs that runs on the .NET 10 Desktop Runtime installed on the PC: build.ps1 and
+       .github/workflows/release.yml make it. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWPF>true</UseWPF>
+    <!-- For the tray icon (NotifyIcon) and the screens' bounds; both in the Desktop Runtime. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>health-reminder</AssemblyName>
+    <RootNamespace>Strongthium.HealthReminder</RootNamespace>
+    <ApplicationIcon>Assets\health-reminder.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Program.Main starts the App: it checks for another copy first. -->
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <!-- LibraryImport (winmm, user32) and Media Foundation's vtables are unsafe code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- WPF0001: the Fluent theme is experimental in .NET 10. WFO0003: WinForms would rather set DPI in code; this is a
+         WPF program, which takes it from the manifest. -->
+    <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- The runtime isn't inside it: the .NET 10 Desktop Runtime on the PC runs it. -->
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <!-- WinForms is only for the tray icon and the screens: its names would clash with WPF's everywhere. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <!-- WPF leaves these out of the implicit usings (it has a Path of its own, in Shapes). -->
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
+
+  <!-- A release is the one program: no debug symbols beside it. -->
+  <Target Name="LeaveOut" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <Resource Include="Assets\health-reminder.png" />
+    <Resource Include="Assets\health-reminder.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HealthReminder.Core\HealthReminder.Core.csproj" />
+  </ItemGroup>
+</Project>

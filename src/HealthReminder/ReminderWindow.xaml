@@ -1,0 +1,316 @@
+<Window x:Class="Strongthium.HealthReminder.ReminderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Strongthium.HealthReminder"
+        xmlns:core="clr-namespace:Strongthium.HealthReminder;assembly=HealthReminder.Core"
+        Title="Reminder"
+        Width="1100" Height="820" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="20,14,20,0">
+      <TextBlock Text="What is it?" Style="{StaticResource Heading}" VerticalAlignment="Center" Margin="0,0,12,0" />
+      <ComboBox x:Name="KindBox" MinWidth="330" SelectionChanged="Kind_Changed">
+        <ComboBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type local:KindChoice}">
+            <StackPanel Orientation="Horizontal">
+              <local:PillView Kind="{Binding Kind}" Appearance="{Binding Sample}" Width="34" Height="24" Margin="0,0,10,0" />
+              <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </StackPanel>
+
+    <Border DockPanel.Dock="Bottom" Padding="20,12" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Button x:Name="DeleteButton" Content="Delete" Click="Delete_Click" />
+        <TextBlock Grid.Column="1" x:Name="SaveError" Foreground="#D64541" VerticalAlignment="Center" Margin="16,0" TextWrapping="Wrap" />
+        <Button Grid.Column="2" Content="Cancel" Margin="0,0,10,0" IsCancel="True" />
+        <Button Grid.Column="3" Content="Save" Style="{DynamicResource AccentButtonStyle}" Padding="28,8" Click="Save_Click" />
+      </Grid>
+    </Border>
+
+    <Grid x:Name="Columns" Margin="16,12,16,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="5*" />
+        <ColumnDefinition Width="6*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- 1. Look the medication up on DailyMed -->
+      <Border x:Name="LookupPanel" Style="{StaticResource Card}" Margin="0,0,8,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="1. Find your medication" Style="{StaticResource Heading}" />
+            <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6"
+                       Text="Type its name, the DIN on a Canadian label (8 digits, like 02155907), or the NDC on a U.S. label (like 0093-7663-56). A DIN or an NDC finds the exact product." />
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBox x:Name="SearchBox" KeyDown="SearchBox_KeyDown" ToolTip="Name, DIN or NDC" VerticalContentAlignment="Center" />
+              <Button Grid.Column="1" Margin="8,0,0,0" Click="Search_Click" Style="{DynamicResource AccentButtonStyle}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                  <TextBlock Text="Search" />
+                </StackPanel>
+              </Button>
+            </Grid>
+            <TextBlock x:Name="SearchStatus" Style="{StaticResource Muted}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" />
+          </StackPanel>
+
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="3*" MinHeight="120" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="2*" MinHeight="90" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Found (Canada: Health Canada, U.S.: DailyMed)" FontWeight="SemiBold" Margin="0,8,0,4" />
+            <ListBox Grid.Row="1" x:Name="LabelList" SelectionChanged="Label_Changed" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:SearchResult}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource Chip}" Background="{Binding CountryBrush}" Width="52" Margin="0,2,10,0" VerticalAlignment="Top" Padding="0,2,0,3">
+                      <TextBlock Text="{Binding Country}" HorizontalAlignment="Center" FontSize="11" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Opacity="{Binding Opacity}">
+                      <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" FontSize="11" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock Grid.Row="2" Text="Strength and appearance" FontWeight="SemiBold" Margin="0,10,0,4" />
+            <ListBox Grid.Row="3" x:Name="ProductList" SelectionChanged="Product_Changed" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:ProductItem}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="72" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <local:PillView Kind="{Binding Kind}" Appearance="{Binding Product.Appearance}" Form="{Binding Product.Form}" Width="64" Height="42" />
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Product.Display}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Look}" Style="{StaticResource Muted}" TextWrapping="Wrap" FontSize="12" />
+                      <TextBlock Text="{Binding NdcText}" Style="{StaticResource Muted}" FontSize="11" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- The same drug and strength from other makers, as their labels describe it: to pick the one that looks
+                 like yours, when your own product's label or monograph doesn't say, or has no photo. -->
+            <Expander Grid.Row="4" x:Name="LookAlikesExpander" Margin="0,10,0,0" Visibility="Collapsed">
+              <Expander.Header>
+                <TextBlock x:Name="LookAlikesHeader" Text="The same drug and strength from other makers" />
+              </Expander.Header>
+              <StackPanel>
+                <TextBlock x:Name="LookAlikesStatus" Style="{StaticResource Caption}" Margin="0,0,0,6" />
+                <ListBox x:Name="LookAlikeList" SelectionChanged="LookAlike_Changed" MaxHeight="200" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:LookAlikeItem}">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <local:PillView Kind="Pill" Appearance="{Binding Product.Appearance}" Form="{Binding Product.Form}" Width="60" Height="38" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Look}" TextWrapping="Wrap" FontSize="13" />
+                          <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" FontSize="11" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </StackPanel>
+            </Expander>
+
+            <Expander Grid.Row="5" x:Name="LabelPhotos" Header="Other pictures on the label" Margin="0,6,0,0">
+              <StackPanel>
+                <ListBox x:Name="PhotoList" SelectionChanged="Photo_Changed" MaxHeight="200" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:PhotoItem}">
+                      <Border Width="110" Height="80" CornerRadius="6" Background="White" ToolTip="{Binding Name}">
+                        <Image Source="{Binding Bitmap}" Stretch="Uniform" />
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Content="Don't use a picture from the label" Click="ClearPhoto_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
+              </StackPanel>
+            </Expander>
+          </Grid>
+        </DockPanel>
+      </Border>
+
+      <!-- 2. The reminder: name, times and amounts, days, and what it looks like -->
+      <Border Grid.Column="1" x:Name="DetailsPanel" Style="{StaticResource Card}" Margin="8,0,0,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="0,0,12,0">
+            <TextBlock x:Name="DetailsHeading" Text="2. Your medication" Style="{StaticResource Heading}" />
+
+            <Grid Margin="0,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <Border Width="200" Height="120" CornerRadius="10" Background="#14808080">
+                  <local:PillView x:Name="Preview" Margin="10" />
+                </Border>
+                <Border x:Name="PreviewPhotoBorder" Width="200" Height="140" CornerRadius="10" Background="White" Margin="0,8,0,0">
+                  <Image x:Name="PreviewPhoto" Stretch="Uniform" />
+                </Border>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                <StackPanel x:Name="LookPanel">
+                  <TextBlock Text="Looks like" Style="{StaticResource Muted}" FontSize="12" />
+                  <TextBlock x:Name="LookText" TextWrapping="Wrap" FontSize="14" />
+                </StackPanel>
+                <!-- What the Canadian product monograph says, word for word. -->
+                <Border x:Name="MonographPanel" Margin="0,10,0,0" Padding="10,8" CornerRadius="6" Background="{DynamicResource SubtleFillColorSecondaryBrush}" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="THE PRODUCT MONOGRAPH SAYS" Style="{StaticResource Caption}" FontWeight="SemiBold" />
+                    <TextBlock x:Name="MonographText" TextWrapping="Wrap" FontStyle="Italic" Margin="0,2,0,6" />
+                    <Button x:Name="MonographButton" Content="Open the monograph" Click="Monograph_Click" HorizontalAlignment="Left" Padding="10,4" FontSize="12" />
+                  </StackPanel>
+                </Border>
+                <TextBlock x:Name="PhotoStatus" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" />
+                <TextBlock x:Name="SourceText" Style="{StaticResource Muted}" TextWrapping="Wrap" FontSize="11" Margin="0,8,0,0" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Name" Style="{StaticResource Label}" />
+            <TextBox x:Name="NameBox" />
+
+            <Grid x:Name="NumbersPanel">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="DIN (Canada)" Style="{StaticResource Label}" />
+                <TextBox x:Name="DinBox" MaxLength="8" ToolTip="The 8-digit Drug Identification Number on a Canadian label" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Prescription (Rx) number" Style="{StaticResource Label}" />
+                <TextBox x:Name="RxBox" MaxLength="30" ToolTip="The pharmacy's number for this prescription, from its label: handy for refills" />
+              </StackPanel>
+            </Grid>
+
+            <!-- How many are on hand: counted, plus refills, less what's marked taken. -->
+            <StackPanel x:Name="SupplyPanel">
+              <TextBlock Text="On hand" Style="{StaticResource Label}" />
+              <WrapPanel>
+                <local:NumberBox x:Name="StockBox" Minimum="0" Maximum="100000" Width="140" Margin="0,0,8,4"
+                                 ToolTip="How many you have now; leave it empty to not keep count" />
+                <TextBlock x:Name="StockUnit" VerticalAlignment="Center" Margin="0,0,12,4" />
+                <TextBlock Text="Refill received:" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <local:NumberBox x:Name="RefillBox" Minimum="0" Maximum="100000" Width="140" Margin="0,0,8,4" />
+                <Button Content="Add it" Click="Refill_Click" Padding="12,5" Margin="0,0,0,4" />
+              </WrapPanel>
+              <TextBlock x:Name="StockText" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel x:Name="UnitPanel">
+              <TextBlock Text="Counted in" Style="{StaticResource Label}" />
+              <ComboBox x:Name="UnitBox" IsEditable="True" Width="200" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel x:Name="ValueUnitPanel">
+              <TextBlock Text="Readings in" Style="{StaticResource Label}" />
+              <ComboBox x:Name="ValueUnitBox" Width="200" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <TextBlock x:Name="TimesHeading" Text="When, and how much" Style="{StaticResource Label}" />
+            <ItemsControl x:Name="TimeList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:TimeSlot}">
+                  <StackPanel Orientation="Horizontal" Margin="0,3">
+                    <local:TimeBox Time="{Binding Time}" Margin="0,0,10,0" />
+                    <local:NumberBox Value="{Binding Amount}" Increment="{Binding Step}" Minimum="0" Maximum="10000" Width="130" Margin="0,0,10,0"
+                                     Visibility="{Binding ShowAmount, Converter={StaticResource VisibleIf}}" />
+                    <Button Content="Remove" Click="RemoveTime_Click" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="+ Add a time" Click="AddTime_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
+            <TextBlock Style="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="Reminders at the same time ring together, and can be answered with one button." />
+
+            <WrapPanel x:Name="DayPanel" Margin="0,10,0,0" />
+
+            <StackPanel x:Name="SitesPanel">
+              <TextBlock Text="Injection sites to rotate through" Style="{StaticResource Label}" />
+              <WrapPanel x:Name="SiteChecks" />
+              <TextBlock Style="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Text="Each reminder suggests the next site after the one used last." />
+            </StackPanel>
+
+            <Expander x:Name="AppearanceExpander" Header="Change how it looks" Margin="0,10,0,0">
+              <Grid Margin="0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="120" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Colour" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1" x:Name="Color1Box" Margin="0,3" SelectionChanged="Appearance_Changed" />
+                <TextBlock Grid.Row="1" Text="Second colour" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="Color2Box" Margin="0,3" SelectionChanged="Appearance_Changed" />
+                <TextBlock Grid.Row="2" Text="Shape" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="2" Grid.Column="1" x:Name="ShapeBox" Margin="0,3" SelectionChanged="Appearance_Changed" />
+                <TextBlock Grid.Row="3" Text="Size (mm)" VerticalAlignment="Center" />
+                <local:NumberBox Grid.Row="3" Grid.Column="1" x:Name="SizeBox" Minimum="0" Maximum="40" Width="130" HorizontalAlignment="Left" Margin="0,3" />
+                <TextBlock Grid.Row="4" Text="Imprint" VerticalAlignment="Center" />
+                <TextBox Grid.Row="4" Grid.Column="1" x:Name="ImprintBox" Margin="0,3" TextChanged="Imprint_Changed" ToolTip="Sides separated by ;  e.g. H;144" />
+                <TextBlock Grid.Row="5" Text="Score" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="5" Grid.Column="1" x:Name="ScoreBox" Margin="0,3" SelectionChanged="Appearance_Changed" />
+              </Grid>
+            </Expander>
+
+            <CheckBox x:Name="VideoBox" Margin="0,12,0,0">
+              <TextBlock TextWrapping="Wrap" Text="Record a video with the webcam when I answer it, with the date and time on it, as evidence" />
+            </CheckBox>
+
+            <TextBlock Text="Notes" Style="{StaticResource Label}" />
+            <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" ToolTip="Shown on the reminder, e.g. take with food" />
+
+            <CheckBox x:Name="ActiveBox" Content="Remind me (untick to pause)" IsChecked="True" Margin="0,10,0,0" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

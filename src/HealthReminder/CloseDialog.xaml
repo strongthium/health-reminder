@@ -1,0 +1,21 @@
+<Window x:Class="Strongthium.HealthReminder.CloseDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Close Health Reminder"
+        SizeToContent="Height" Width="480"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Asked when the main window's X is clicked, until "Don't ask again" (or Settings) says what it does. -->
+  <StackPanel Margin="24,20,24,20">
+    <TextBlock Text="Keep reminding you?" Style="{StaticResource Title}" />
+    <TextBlock TextWrapping="Wrap" Margin="0,8,0,0"
+               Text="In the tray, Health Reminder keeps running and rings when something is due. If it quits, nothing rings until it's opened again." />
+    <CheckBox x:Name="RememberBox" Content="Don't ask again (Settings can change it)" Margin="0,16,0,0" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button Content="Cancel" IsCancel="True" Padding="16,6" />
+      <Button Content="Quit" Click="Quit_Click" Padding="16,6" Margin="8,0,0,0" />
+      <Button Content="Keep running in the tray" Click="Tray_Click" IsDefault="True" Style="{DynamicResource AccentButtonStyle}"
+              Padding="16,6" Margin="8,0,0,0" />
+    </StackPanel>
+  </StackPanel>
+</Window>

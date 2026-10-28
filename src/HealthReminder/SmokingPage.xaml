@@ -1,0 +1,283 @@
+<UserControl x:Class="Strongthium.HealthReminder.SmokingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Strongthium.HealthReminder"
+             xmlns:core="clr-namespace:Strongthium.HealthReminder;assembly=HealthReminder.Core">
+  <UserControl.Resources>
+    <Style x:Key="TileNumber" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Stat" TargetType="Border">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,0,8,8" />
+      <Setter Property="MinWidth" Value="170" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28,36,28" MaxWidth="1000">
+      <Grid Margin="0,0,0,16">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="Smoking" Style="{StaticResource PageTitle}" />
+          <TextBlock Text="Log each cigarette, see the pattern, and cut down step by step while your body recalibrates" Style="{StaticResource Muted}" FontSize="14" Margin="0,2,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button x:Name="LogButton" Grid.Column="1" Style="{DynamicResource AccentButtonStyle}" VerticalAlignment="Center" Padding="16,8" Click="Log_Click" />
+      </Grid>
+
+      <!-- How it's logged -->
+      <Border Style="{StaticResource Card}" Padding="20,16">
+        <StackPanel>
+          <CheckBox x:Name="ButtonBox" Click="ButtonBox_Click">
+            <TextBlock TextWrapping="Wrap"><Run Text="Show a button on top of everything" FontWeight="SemiBold" /><Run Text=": one click logs a cigarette. Drag it where it suits you; right-click it to undo or hide it. The tray icon's menu can log one too." /></TextBlock>
+          </CheckBox>
+          <CheckBox x:Name="TimedBox" Margin="0,10,0,0" Click="TimedBox_Click">
+            <TextBlock TextWrapping="Wrap"><Run Text="Time each one" FontWeight="SemiBold" /><Run Text=": click when you light it and again when it's out, for how long each takes and when the air clears." /></TextBlock>
+          </CheckBox>
+        </StackPanel>
+      </Border>
+
+      <!-- The numbers -->
+      <WrapPanel Margin="0,16,0,0">
+        <Border Style="{StaticResource Stat}">
+          <StackPanel>
+            <TextBlock x:Name="TodayText" Style="{StaticResource TileNumber}" />
+            <TextBlock x:Name="TodayLabel" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Stat}">
+          <StackPanel>
+            <TextBlock x:Name="PerDayText" Style="{StaticResource TileNumber}" />
+            <TextBlock Text="a day, last 7 days" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Stat}">
+          <StackPanel>
+            <TextBlock x:Name="SinceText" Style="{StaticResource TileNumber}" />
+            <TextBlock Text="since the last one" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </Border>
+        <Border x:Name="CostTile" Style="{StaticResource Stat}">
+          <StackPanel>
+            <TextBlock x:Name="CostText" Style="{StaticResource TileNumber}" />
+            <TextBlock Text="a week, at this rate" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <!-- How it's smoked -->
+      <TextBlock Text="How you smoke" Style="{StaticResource Heading}" FontSize="15" Margin="2,16,0,8" />
+      <Border Style="{StaticResource Card}" Padding="20,16">
+        <StackPanel>
+          <TextBlock Text="Time per cigarette" FontWeight="SemiBold" />
+          <TextBlock x:Name="DurationText" TextWrapping="Wrap" Margin="0,2,0,0" />
+          <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                     Text="How long a cigarette takes mostly shows how hard it's smoked, not how well your lungs work: when cigarettes get quicker, puffs are usually bigger, deeper or closer together, which takes in more nicotine and smoke from each. A lung function test (spirometry) at a clinic measures the lungs." />
+          <Separator Margin="0,12" />
+          <TextBlock Text="The first of the day" FontWeight="SemiBold" />
+          <TextBlock x:Name="FirstText" TextWrapping="Wrap" Margin="0,2,0,0" />
+          <Separator Margin="0,12" />
+          <TextBlock Text="After the last one" FontWeight="SemiBold" />
+          <TextBlock x:Name="AirText" TextWrapping="Wrap" Margin="0,2,0,0" />
+        </StackPanel>
+      </Border>
+
+      <!-- What's smoked -->
+      <TextBlock Text="What you smoke" Style="{StaticResource Heading}" FontSize="15" Margin="2,20,0,8" />
+      <Border Style="{StaticResource Card}" Padding="20,16">
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="2*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,10,0">
+              <TextBlock Text="Brand" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+              <TextBox x:Name="BrandBox" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="0,0,10,0">
+              <TextBlock Text="Cigarettes a pack" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+              <local:NumberBox x:Name="PerPackBox" Minimum="1" Maximum="50" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Price of a pack" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+              <TextBox x:Name="PriceBox" />
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="If your pack prints them, the amounts measured for your brand, a cigarette:" Style="{StaticResource Caption}" Margin="0,12,0,4" TextWrapping="Wrap" />
+          <WrapPanel>
+            <TextBlock Text="Tar" VerticalAlignment="Center" Margin="0,0,6,4" />
+            <local:NumberBox x:Name="TarBox" Minimum="0" Maximum="50" Increment="0.5" Width="100" Margin="0,0,4,4" />
+            <TextBlock Text="mg" VerticalAlignment="Center" Margin="0,0,18,4" />
+            <TextBlock Text="Nicotine" VerticalAlignment="Center" Margin="0,0,6,4" />
+            <local:NumberBox x:Name="NicotineBox" Minimum="0" Maximum="5" Increment="0.1" Width="100" Margin="0,0,4,4" />
+            <TextBlock Text="mg" VerticalAlignment="Center" Margin="0,0,18,4" />
+            <TextBlock Text="Carbon monoxide" VerticalAlignment="Center" Margin="0,0,6,4" />
+            <local:NumberBox x:Name="CoBox" Minimum="0" Maximum="50" Increment="0.5" Width="100" Margin="0,0,4,4" />
+            <TextBlock Text="mg" VerticalAlignment="Center" Margin="0,0,0,4" />
+          </WrapPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="Save" Click="SaveBrand_Click" Padding="16,6" />
+            <TextBlock x:Name="BrandSaved" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+          </StackPanel>
+
+          <TextBlock Text="What's in the smoke of one cigarette" FontWeight="SemiBold" Margin="0,18,0,2" />
+          <TextBlock x:Name="ConstituentsNote" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,8" />
+          <ItemsControl x:Name="ConstituentList" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="1" Text="{Binding Amount}" TextWrapping="Wrap" Margin="8,0" />
+                  <TextBlock Grid.Column="2" Text="{Binding What}" Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Cutting down -->
+      <TextBlock Text="Cutting down" Style="{StaticResource Heading}" FontSize="15" Margin="2,20,0,8" />
+      <Border Style="{StaticResource Card}" Padding="20,16">
+        <StackPanel>
+          <TextBlock TextWrapping="Wrap"
+                     Text="Cut down step by step rather than all at once, and recalibrate your body as you go: fewer cigarettes each week, and one change a week to eating, drinking or moving, each working against something the smoke does in the body." />
+
+          <TextBlock Text="A goal" FontWeight="SemiBold" Margin="0,14,0,0" />
+          <WrapPanel Margin="0,6,0,0">
+            <CheckBox x:Name="GoalBox" Content="Cut down by" VerticalAlignment="Center" Click="Goal_Changed" Margin="0,0,8,0" />
+            <ComboBox x:Name="FewerBox" Width="160" SelectionChanged="Goal_Changed">
+              <ComboBoxItem Content="1 a day" />
+              <ComboBoxItem Content="2 a day" />
+              <ComboBoxItem Content="3 a day" />
+              <ComboBoxItem Content="5 a day" />
+            </ComboBox>
+            <TextBlock Text="each week" VerticalAlignment="Center" Margin="8,0,0,0" />
+          </WrapPanel>
+          <TextBlock x:Name="GoalText" TextWrapping="Wrap" Margin="0,6,0,0" />
+
+          <Separator Margin="0,14" />
+          <TextBlock Text="What the smoke does in your body" FontWeight="SemiBold" />
+          <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,8"
+                     Text="Beyond habit, these are the ways it acts on the body that a craving can come from." />
+          <ItemsControl x:Name="EffectList" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type core:BodyEffect}">
+                <StackPanel Margin="0,0,0,8">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding What}" TextWrapping="Wrap" Style="{StaticResource Muted}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Separator Margin="0,10,0,14" />
+          <TextBlock Text="One step a week" FontWeight="SemiBold" />
+          <TextBlock x:Name="StepsIntro" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,8" />
+          <ItemsControl x:Name="StepList" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:StepRow}">
+                <Border CornerRadius="8" Background="{DynamicResource SubtleFillColorSecondaryBrush}" Padding="14,12" Margin="0,0,0,6" Opacity="{Binding Opacity}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,12,0">
+                      <WrapPanel>
+                        <TextBlock Text="{Binding Number}" FontWeight="SemiBold" Margin="0,0,8,0" Style="{StaticResource Muted}" />
+                        <TextBlock Text="{Binding Step.Title}" FontWeight="SemiBold" Margin="0,0,10,0" />
+                        <Border Style="{StaticResource Chip}" Background="{Binding EvidenceBrush}" Margin="0,0,6,0">
+                          <TextBlock Text="{Binding EvidenceText}" />
+                        </Border>
+                        <Border Style="{StaticResource Chip}" Background="{Binding StateBrush}" Visibility="{Binding StateText, Converter={StaticResource VisibleIfText}}">
+                          <TextBlock Text="{Binding StateText}" />
+                        </Border>
+                      </WrapPanel>
+                      <TextBlock Text="{Binding Step.Do}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                      <TextBlock TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource Muted}"><Run Text="Why: " FontWeight="SemiBold" /><Run Text="{Binding Step.Why, Mode=OneWay}" /></TextBlock>
+                      <TextBlock Text="{Binding Step.Studies}" TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource Caption}" />
+                      <TextBlock Text="{Binding Step.Caution}" TextWrapping="Wrap" Margin="0,4,0,0" Style="{StaticResource Caption}" Foreground="#C25700"
+                                 Visibility="{Binding Step.Caution, Converter={StaticResource VisibleIfText}}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Top" Content="{Binding ButtonText}" Click="Step_Click" Padding="12,6"
+                            Visibility="{Binding ButtonText, Converter={StaticResource VisibleIfText}}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock x:Name="CautionText" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="#C25700" />
+
+          <Separator Margin="0,14" />
+          <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap"
+                     Text="Smoking speeds up how fast the body clears some medicines, such as clozapine, olanzapine, theophylline and caffeine; cutting down or stopping can raise their levels. Tell your doctor or pharmacist when you change how much you smoke." />
+          <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,6,0,0"
+                     Text="Free help to quit: in Canada, 1-866-366-3667; in the U.S., 1-800-QUIT-NOW (1-800-784-8669)." />
+
+          <Expander Header="Other help: nicotine replacement and medicines" Margin="0,12,0,0">
+            <StackPanel Margin="0,8,0,0">
+              <TextBlock TextWrapping="Wrap" Style="{StaticResource Muted}"
+                         Text="Nicotine replacement gives nicotine without the smoke and is then stepped down. It keeps a nicotine habit while it lasts, and doesn't stand in for the rest of what the smoke does; some use it as a bridge on hard days." />
+              <TextBlock x:Name="MatchText" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,8" />
+              <ItemsControl x:Name="ReplacementList" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type core:NicotineOption}">
+                    <Border CornerRadius="8" Background="{DynamicResource SubtleFillColorSecondaryBrush}" Padding="14,10" Margin="0,0,0,6">
+                      <StackPanel>
+                        <TextBlock><Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Dose, Mode=OneWay}" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" /></TextBlock>
+                        <TextBlock Text="{Binding How}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                         Text="Sold without a prescription; a pharmacist can help choose. Ask a doctor first if you're pregnant or have had a recent heart attack or stroke. From a doctor, varenicline or bupropion are other options." />
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </Border>
+
+      <!-- The log -->
+      <TextBlock Text="Today and yesterday" Style="{StaticResource Heading}" FontSize="15" Margin="2,20,0,8" />
+      <Border Style="{StaticResource Card}" Padding="20,12">
+        <StackPanel>
+          <TextBlock x:Name="WeekText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+          <TextBlock x:Name="NoLog" Text="Nothing logged today or yesterday." Style="{StaticResource Muted}" />
+          <ItemsControl x:Name="LogList" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:SmokeRow}">
+                <Grid Margin="0,2">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding When}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="1" Text="{Binding Detail}" Style="{StaticResource Muted}" VerticalAlignment="Center" />
+                  <Button Grid.Column="2" Click="Delete_Click" Padding="8,4" ToolTip="Delete it">
+                    <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="12" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
