@@ -567,6 +567,15 @@ public sealed class VisibleIfTextConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+/// <summary>Shown when a width is at least the one given (the parameter): what fits only in a wide window.</summary>
+public sealed class VisibleIfWiderConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is double width && double.TryParse(parameter as string, NumberStyles.Float, CultureInfo.InvariantCulture, out var least) && width >= least
+            ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
 /// <summary>Photos from the data directory, small enough for the windows.</summary>
 internal static class Photos
 {

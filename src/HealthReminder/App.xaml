@@ -13,6 +13,7 @@
       <BooleanToVisibilityConverter x:Key="VisibleIf" />
       <local:VisibleUnlessConverter x:Key="VisibleUnless" />
       <local:VisibleIfTextConverter x:Key="VisibleIfText" />
+      <local:VisibleIfWiderConverter x:Key="VisibleIfWider" />
       <local:KindBrushConverter x:Key="KindBrush" />
 
       <SolidColorBrush x:Key="AlarmBandRed" Color="#C62828" />

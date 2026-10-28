@@ -2,11 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Strongthium.HealthReminder"
-        Title="In your kitchen"
-        SizeToContent="Height" Width="560"
+        Title="Picture"
+        SizeToContent="Height" Width="660"
         ResizeMode="NoResize" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
-  <!-- Something in the kitchen: its picture and the picture's colour, where it's kept, its group and its best-before. -->
+  <!-- Something in the kitchen's picture, by the kind of thing it shows, and the picture's colour. -->
   <StackPanel Margin="24,20,24,20">
     <Grid>
       <Grid.ColumnDefinitions>
@@ -20,8 +20,9 @@
       </StackPanel>
     </Grid>
 
-    <TextBlock Text="Picture" Style="{StaticResource Label}" Margin="0,18,0,6" />
-    <WrapPanel x:Name="IconPanel" />
+    <ScrollViewer MaxHeight="430" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0">
+      <StackPanel x:Name="IconPanel" Margin="0,0,8,0" />
+    </ScrollViewer>
 
     <TextBlock Text="Colour" Style="{StaticResource Label}" Margin="0,14,0,6" />
     <WrapPanel x:Name="SwatchPanel" />
@@ -29,31 +30,6 @@
       <Button Content="More colours…" Click="MoreColors_Click" Padding="12,5" />
       <Button x:Name="UsualColorButton" Content="Its usual colour" Click="UsualColor_Click" Padding="12,5" Margin="8,0,0,0" />
     </StackPanel>
-
-    <Grid Margin="0,14,0,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="16" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-      <StackPanel>
-        <TextBlock Text="Kept in" Style="{StaticResource Label}" Margin="0,0,0,6" />
-        <ComboBox x:Name="PlaceBox" DisplayMemberPath="Name" SelectionChanged="Place_Changed"
-                  ToolTip="Into a freezer, it's frozen from today; out of one, it's thawed from today" />
-      </StackPanel>
-      <StackPanel Grid.Column="2">
-        <TextBlock Text="Group" Style="{StaticResource Label}" Margin="0,0,0,6" />
-        <ComboBox x:Name="GroupBox" SelectionChanged="Group_Changed" />
-      </StackPanel>
-    </Grid>
-
-    <TextBlock Text="Best before" Style="{StaticResource Label}" Margin="0,14,0,6" />
-    <StackPanel Orientation="Horizontal">
-      <DatePicker x:Name="DateBox" Width="180" SelectedDateChanged="Date_Changed" />
-      <Button x:Name="UsualDateButton" Content="Usual date" Click="UsualDate_Click" Padding="12,5" Margin="8,0,0,0"
-              ToolTip="Back to the date worked out from when it was added or frozen" />
-    </StackPanel>
-    <TextBlock x:Name="DateNote" Style="{StaticResource Caption}" Margin="0,4,0,0" />
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
       <Button Content="Cancel" IsCancel="True" Padding="16,6" />

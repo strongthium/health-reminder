@@ -113,12 +113,12 @@ last price per litre or kilogram.
 ![Your kitchen](docs/groceries-kitchen.png)
 
 Your kitchen: a running stock that the meals you cook take off, by where it's kept and then by group, a line each with
-its picture and its best-before (from when it was added, or frozen). What's in doubt is marked **check**.
+its picture, its brand, how much and its best-before. What's in doubt has a badge on its picture. A click on a line opens
+it, to change its name, brand, packs, place, group and dates there.
 
-<img src="docs/kitchen-picture.png" alt="Changing a thing's picture, colour and place" width="60%">
+<img src="docs/kitchen-picture.png" alt="Picking a thing's picture by kind, and its colour" width="60%">
 
-Clicking a picture: another picture or colour, another place (into a freezer freezes it), another group, another
-best-before.
+Clicking a picture: another picture, by kind (containers, drinks, meat, bread…), and another colour.
 
 <img src="docs/kitchen-check.png" alt="Time to check the kitchen" width="60%">
 
@@ -392,19 +392,34 @@ it.
 **Where it's kept.** The kitchen is shown by place (**Freezer**, **Fridge**, **Pantry**, **Cupboard** and
 **Counter** to begin with), and in each by group: fruit and vegetables, meat and fish, dairy and eggs, beverages
 (pop, juice, milk, cream), bread, meals and leftovers, dry goods (pasta, rice, cans), snacks, condiments and spreads,
-and spices. Each thing is a line: its picture, how much, its best-before, and a box to count it. Where it goes and its
+and spices. Each thing is a line: its picture, its name and brand, how much, its best-before, and a box to count it;
+what's in doubt has a badge on its picture. **Sort** puts each group by name, best-before, newest or oldest, or brand.
+Where it goes and its
 group come from its name ("Coke" is a beverage in the pantry, "Garlic powder" a spice in the cupboard, "Frozen
-broccoli" a vegetable in the freezer, "Cheez Whiz" a spread in the fridge), and so does its picture: about forty, from
-a pop can to a jar, a spice shaker or a fish, in the colour its name says (red for Coke, blue for Pepsi). **Places**
+broccoli" a vegetable in the freezer, "Cheez Whiz" a spread in the fridge), and so does its picture: over seventy, from
+a pop can, a jug or a glass container to ground beef, a bagel or a pie, in the colour its name says (red for Coke,
+blue for Pepsi). **Places**
 adds more and names them (a **Deep freezer** beside the fridge's freezer, a **Garage fridge**), orders them, and
 takes them away; what's in a place taken away goes where its kind goes. A place's heading folds it away.
 
-Clicking a thing's picture changes the picture and its colour (any colour, with **More colours…**), the place it's
-kept, its group, and its best-before.
+Clicking a thing's picture changes the picture, picked by kind (containers such as a bottle, jug, carafe, carton, sack,
+envelope or glass container; drinks; meat and fish; bread such as a loaf, baguette, bun or bagel…), and its colour (any
+colour, with **More colours…**).
+
+**A line opened.** A click on a line opens it in place: its name, a second name for which one it is (a brand:
+**Schneiders**), the place it's kept and its group, and how much there is with the packs it's in and what one weighs:
+*2 in 1 box, 200 g each* makes 400 g; *8 in 1 pack, a 500 g pack of 12* makes a hot dog about 42 g and 333 g left.
+Its dates are there too: when it was added, when it went into the freezer, and its best-before. What's typed is kept
+when it's left.
+
+**Moving things together.** **Pick** puts a box on each line (and **pick all** on each group); what's picked moves to
+another place, goes into another group, or comes off, all at once. A line, or what's picked with it, can also be
+dragged onto another place.
 
 **Best before.** Each thing's best-before is worked out from when it was added, for as long as it keeps where it's
 kept (chicken breasts 2 days in the fridge, eggs 4 weeks, butter 2 months, bread 6 days on the counter; cans, rice and
-pasta keep). Any of them can be set to another date, and **Usual date** puts it back.
+pasta keep). Any of them can be set to another date, and **Usual date** puts it back. Moving the day it was added, or
+the day it went into the freezer, moves the best-before with it, unless that was set by hand.
 
 **The freezer.** Moved to a freezer, the best-before is from that day, for as long as it's at its best frozen at
 −18 °C (0 °F): 9 months for chicken breasts, 6 for steak, 3 for ground beef, bread and milk, 2 for salmon (from the
@@ -420,7 +435,7 @@ in the fridge for every 5 °C (9 °F) over 4 °C, as bacteria grow faster, and h
 (7 °F) over −18 °C. A warning says so, and when the freezer is too warm to keep food frozen solid. A colder setting
 isn't taken to keep food longer.
 
-Counts drift, so what's in doubt is marked **check**: an amount read from a photo, more used than was counted, or not
+Counts drift, so what's in doubt has a badge on its picture: an amount read from a photo, more used than was counted, or not
 counted for two weeks. Each thing can be counted on the spot (type what there is and **Set** it, say the amount is
 right with ✓, or take it off as none left), and
 a time a week is set aside for it (Sunday at 10:00 to begin with): when something's in doubt, an alert says what and

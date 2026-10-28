@@ -19,10 +19,12 @@ public sealed record Supply(double OnHand, double DailyUse)
 /// <paramref name="UseBySet"/> whether <paramref name="UseBy"/> was set by hand or read from a photo rather than worked
 /// out from those. <paramref name="Place"/> is the place it was put in (null for where it goes, by what it is), and
 /// <paramref name="Icon"/>, <paramref name="Color"/> and <paramref name="Group"/> what was picked for it, null for what
-/// its name says (<see cref="Foods.Guess"/>).</summary>
+/// its name says (<see cref="Foods.Guess"/>). <paramref name="Note"/> is a second name for which one it is (a brand:
+/// "Schneiders"), and <paramref name="Packing"/> the packs it's in and what each piece weighs.</summary>
 public sealed record PantryItem(string Name, double Amount, string Unit, DateTime? UseBy, DateTime Counted, bool Unsure,
     DateTime Added = default, DateTime? Frozen = null, bool UseBySet = false,
-    long? Place = null, string? Icon = null, string? Color = null, FoodGroup? Group = null)
+    long? Place = null, string? Icon = null, string? Color = null, FoodGroup? Group = null,
+    string? Note = null, Packing? Packing = null)
 {
     public bool InFreezer => Frozen is not null;
 
@@ -40,6 +42,25 @@ public sealed record PantryItem(string Name, double Amount, string Unit, DateTim
 
     public FoodGroup ShownGroup => Group ?? Guess.Group;
 }
+
+/// <summary>
+/// How something comes: <paramref name="Packs"/> packs of it (each a <paramref name="Word"/>: "box", "pack", "bag"), and
+/// how much one piece of it is, or a whole pack (<paramref name="OfPack"/>) of <paramref name="PerPack"/> pieces:
+/// <paramref name="Size"/> g, or mL when <paramref name="Volume"/>. "2 pies in 1 box, 200 g each"; "8 hot dogs in 1
+/// pack, a 500 g pack of 12", which makes a hot dog about 42 g.
+/// </summary>
+public sealed record Packing(double? Packs = null, string Word = "pack", double? Size = null, bool Volume = false, bool OfPack = false, double? PerPack = null)
+{
+    public Dimension Dimension => Volume ? Dimension.Volume : Dimension.Mass;
+
+    /// <summary>What one piece is: its own size, or a pack's shared by what a full one holds; null when it can't be told.</summary>
+    public double? Each => Size is not { } size ? null : !OfPack ? size : PerPack is > 0 and var count ? size / count : null;
+
+    public bool IsEmpty => Packs is null && Size is null && PerPack is null;
+}
+
+/// <summary>The order things are in, within each group of a place.</summary>
+public enum KitchenSort { Name, BestBefore, Newest, Oldest, Brand }
 
 /// <summary>A place in the kitchen things are kept, named as its owner likes ("Deep freezer"), of a
 /// <paramref name="Kind"/>: what's in one of kind Freezer is frozen. Shown in the order of <paramref name="Sort"/>.</summary>
@@ -155,6 +176,77 @@ public static partial class Pantry
         : item.Unit == "g" ? Quantities.Format(new Quantity(item.Amount, Dimension.Mass), system)
         : item.Unit == "mL" ? Quantities.Format(new Quantity(item.Amount, Dimension.Volume), system)
         : Amounts.Format(Math.Round(item.Amount * 4) / 4, item.Unit);
+
+    /// <summary>"300 g", "2 in 1 box · 200 g each", "8 in 1 pack · 42 g each", "1 · a 500 g pack": how much there is, the
+    /// packs it's in and what one piece is.</summary>
+    public static string Describe(PantryItem item, MeasureSystem system)
+    {
+        var text = Show(item, system);
+        if (item.Packing is not { } packing) return text;
+        if (packing.Packs is { } packs && packs > 0 && item.Amount > 0) text += " in " + Amounts.Format(packs, packing.Word);
+        if (packing.Each is { } each) text += " · " + Quantities.Format(new Quantity(each, packing.Dimension), system) + " each";
+        else if (packing.Size is { } size) text += $" · a {Quantities.Format(new Quantity(size, packing.Dimension), system)} {packing.Word}";
+        return text;
+    }
+
+    /// <summary>What it comes to, from what one piece is: "400 g in all" for 2 pies of 200 g, "about 6" for 250 g of
+    /// 42 g hot dogs; "" when that can't be told, or is what's shown already.</summary>
+    public static string InAll(PantryItem item, MeasureSystem system)
+    {
+        if (item.Packing is not { Each: { } each } packing || item.Amount <= 0 || each <= 0) return "";
+        if (item.Unit is "g" or "mL")
+            return (item.Unit == "mL") == packing.Volume ? $"about {Amounts.Format(Math.Round(item.Amount / each * 2) / 2, "")}" : "";
+        return Quantities.Format(new Quantity(item.Amount * each, packing.Dimension), system) + " in all";
+    }
+
+    /// <summary>The packing as typed: how many packs ("1"), what one's called ("box"), what a piece or a pack weighs or
+    /// holds ("200 g", "1 lb", "355 mL"), whether that's a pack's, and how many a full pack holds. Blank is none; the
+    /// problem says what couldn't be read.</summary>
+    public static (Packing? Packing, string Problem) ReadPacking(string packs, string word, string size, bool ofPack, string perPack)
+    {
+        double? Number(string text, out bool bad)
+        {
+            bad = false;
+            if (text.Trim().Length == 0) return null;
+            if (Quantities.Parse(text) is { Dimension: Dimension.Count, Amount: > 0 } q) return q.Amount;
+            bad = true;
+            return null;
+        }
+        var count = Number(packs, out var badPacks);
+        var full = Number(perPack, out var badFull);
+        Quantity? measure = size.Trim().Length == 0 ? null : Quantities.Parse(size);
+        var problem = badPacks ? "How many packs is a number: 1, 2, ½."
+            : measure is { Dimension: Dimension.Count } || size.Trim().Length > 0 && measure is null ? "A size is a weight or an amount: 200 g, 1 lb, 355 mL."
+            : badFull && ofPack ? "What a full pack holds is a number: 12."
+            : "";
+        var packing = new Packing(count, word.Trim().Length > 0 ? word.Trim().ToLowerInvariant() : "pack", measure?.Amount,
+            measure?.Dimension == Dimension.Volume, ofPack, ofPack ? full : null);
+        return (packing.IsEmpty ? null : packing, problem);
+    }
+
+    /// <summary>In the order asked for: by name (and brand), soonest best-before first, newest or oldest in first, or by
+    /// brand. What keeps comes last by date; what's frozen counts from when it went in.</summary>
+    public static IEnumerable<PantryItem> Sorted(IEnumerable<PantryItem> items, KitchenSort sort)
+    {
+        var byName = StringComparer.OrdinalIgnoreCase;
+        DateTime In(PantryItem p) => p.Frozen ?? p.Since;
+        return sort switch
+        {
+            KitchenSort.BestBefore => items.OrderBy(p => p.UseBy ?? DateTime.MaxValue).ThenBy(p => p.Name, byName),
+            KitchenSort.Newest => items.OrderByDescending(In).ThenBy(p => p.Name, byName),
+            KitchenSort.Oldest => items.OrderBy(In).ThenBy(p => p.Name, byName),
+            KitchenSort.Brand => items.OrderBy(p => p.Note is { Length: > 0 } ? 0 : 1).ThenBy(p => p.Note ?? "", byName).ThenBy(p => p.Name, byName),
+            _ => items.OrderBy(p => p.Name, byName).ThenBy(p => p.Note ?? "", byName),
+        };
+    }
+
+    /// <summary>Put in (bought, or thawed) on another day: its best-before is worked out from it, unless set by hand.</summary>
+    public static PantryItem SetAdded(PantryItem item, DateTime day, ColdStorage? cold = null) =>
+        Refresh(item with { Added = day.Date + item.Since.TimeOfDay }, cold);
+
+    /// <summary>Into the freezer on another day: its best-before is worked out from it, unless set by hand.</summary>
+    public static PantryItem SetFrozen(PantryItem item, DateTime day, ColdStorage? cold = null) =>
+        item.Frozen is { } frozen ? Refresh(item with { Frozen = day.Date + frozen.TimeOfDay }, cold) : item;
 
     /// <summary>For something not in the catalog, how long it's taken to keep frozen.</summary>
     public const int FreezerMonthsUnknown = 3;

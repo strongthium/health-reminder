@@ -17,18 +17,45 @@ public sealed record FoodLook(FoodGroup Group, string Icon, string? Color, Kept 
 /// </summary>
 public static partial class Foods
 {
-    /// <summary>The pictures there are, in the order they're offered, with what each shows.</summary>
-    public static readonly IReadOnlyList<(string Key, string Label)> Icons =
+    /// <summary>The pictures there are, by the kind of thing they show, in the order they're offered, with what each is
+    /// called.</summary>
+    public static readonly IReadOnlyList<(string Section, IReadOnlyList<(string Key, string Label)> Icons)> IconSections =
     [
-        ("can", "Pop can"), ("bottle", "Bottle"), ("juice", "Juice box"), ("glass", "Glass"), ("milk", "Milk carton"), ("coffee", "Coffee or tea"),
-        ("eggs", "Eggs"), ("cheese", "Cheese"), ("butter", "Butter"), ("yogurt", "Yogurt"),
-        ("chicken", "Chicken"), ("beef", "Meat"), ("fish", "Fish"), ("sausage", "Sausage"), ("burger", "Burger"),
-        ("apple", "Apple"), ("banana", "Banana"), ("citrus", "Lemon or orange"), ("berries", "Berries"), ("tomato", "Tomato"),
-        ("pepper", "Pepper"), ("carrot", "Carrot"), ("cucumber", "Cucumber"), ("leafy", "Greens"), ("potato", "Potato"), ("onion", "Onion or garlic"),
-        ("bread", "Bread"), ("pizza", "Pizza"), ("noodles", "Noodles or a meal"),
-        ("box", "Box"), ("bag", "Bag"), ("tin", "Can"), ("jar", "Jar"), ("sauce", "Sauce"), ("spice", "Spice"),
-        ("cookie", "Cookie or snack"), ("icecream", "Ice cream"), ("ice", "Frozen"), ("food", "Food"),
+        ("Containers",
+        [
+            ("bottle", "Bottle"), ("jug", "Jug"), ("carafe", "Carafe"), ("milk", "Carton"), ("bag", "Bag"), ("box", "Box"), ("sack", "Sack"),
+            ("envelope", "Envelope"), ("container", "Glass container"), ("tub", "Tub"), ("tin", "Can"), ("jar", "Jar"),
+            ("sauce", "Squeeze bottle"), ("spice", "Shaker"),
+        ]),
+        ("Drinks", [("can", "Pop can"), ("juice", "Juice box"), ("glass", "Glass"), ("coffee", "Coffee or tea"), ("wine", "Wine")]),
+        ("Dairy & eggs", [("eggs", "Eggs"), ("cheese", "Cheese"), ("butter", "Butter"), ("yogurt", "Yogurt")]),
+        ("Meat & fish",
+        [
+            ("chicken", "Chicken"), ("strips", "Chicken strips"), ("beef", "Steak"), ("groundbeef", "Ground beef"), ("bacon", "Bacon"),
+            ("sausage", "Sausage"), ("hotdog", "Hot dog"), ("burger", "Burger"), ("fish", "Fish"), ("shrimp", "Shrimp"),
+        ]),
+        ("Fruit",
+        [
+            ("apple", "Apple"), ("banana", "Banana"), ("citrus", "Lemon or orange"), ("berries", "Berries"), ("strawberry", "Strawberry"),
+            ("grapes", "Grapes"), ("watermelon", "Watermelon"), ("avocado", "Avocado"),
+        ]),
+        ("Vegetables",
+        [
+            ("tomato", "Tomato"), ("pepper", "Pepper"), ("carrot", "Carrot"), ("cucumber", "Cucumber"), ("leafy", "Greens"), ("broccoli", "Broccoli"),
+            ("corn", "Corn"), ("potato", "Potato"), ("onion", "Onion or garlic"), ("mushroom", "Mushroom"),
+        ]),
+        ("Bread & bakery",
+        [
+            ("bread", "Sliced bread"), ("loaf", "Loaf"), ("baguette", "Baguette"), ("bun", "Bun"), ("bagel", "Bagel"), ("croissant", "Croissant"),
+            ("tortilla", "Tortilla or wrap"), ("muffin", "Muffin"), ("donut", "Doughnut"), ("pancakes", "Pancakes"), ("cake", "Cake"), ("pie", "Pie"),
+        ]),
+        ("Meals", [("pizza", "Pizza"), ("noodles", "Noodles"), ("soup", "Soup")]),
+        ("Snacks & sweets", [("cookie", "Cookie"), ("chocolate", "Chocolate bar"), ("popcorn", "Popcorn"), ("icecream", "Ice cream")]),
+        ("Other", [("ice", "Frozen"), ("food", "Food")]),
     ];
+
+    /// <summary>All the pictures, in the order they're offered.</summary>
+    public static readonly IReadOnlyList<(string Key, string Label)> Icons = IconSections.SelectMany(s => s.Icons).ToList();
 
     public static string Name(FoodGroup group) => group switch
     {
@@ -79,10 +106,12 @@ public static partial class Foods
         R("soy sauce|teriyaki|fish sauce|hoisin|oyster sauce", FoodGroup.Condiments, "sauce", Kept.Cupboard, "#3E2723"),
         R("dressing|vinaigrette|ranch", FoodGroup.Condiments, "sauce", Kept.Fridge, "#E8C66A"),
         R("pickles?|olives|sauerkraut|capers", FoodGroup.Condiments, "jar", Kept.Fridge, "#6B8E23"),
-        R(@"hummus|tzatziki|guacamole|dip\b", FoodGroup.Condiments, "jar", Kept.Fridge, "#C9B37E"),
+        R(@"hummus|tzatziki|guacamole|dip\b", FoodGroup.Condiments, "tub", Kept.Fridge, "#C9B37E"),
         R("pasta sauce|tomato sauce|marinara|alfredo|pizza sauce|tomato paste", FoodGroup.DryGoods, "jar", Kept.Pantry, "#C62828"),
         R("sauce", FoodGroup.Condiments, "sauce", Kept.Fridge),
         // Spices
+        R(@"(?:taco|fajita|chili|chilli) seasoning|seasoning (?:mix|packets?)|dip mix", FoodGroup.Spices, "envelope", Kept.Pantry, "#E8B923"),
+        R(@"gravy mix|gravy|soup mix|sauce mix", FoodGroup.DryGoods, "envelope", Kept.Pantry, "#8D5A1B"),
         R(@"salt\b|sea salt", FoodGroup.Spices, "spice", Kept.Cupboard, "#CFD8DC"),
         R("black pepper|white pepper|peppercorns?", FoodGroup.Spices, "spice", Kept.Cupboard, "#424242"),
         R(@"oregano|basil|thyme|rosemary|sage\b|dill\b|dried parsley|parsley flakes|italian seasoning|herbes", FoodGroup.Spices, "spice", Kept.Cupboard, "#6B8E23"),
@@ -104,65 +133,95 @@ public static partial class Foods
         R("grape juice", FoodGroup.Beverages, "juice", Kept.Fridge, "#6A2C91"),
         R("cranberry", FoodGroup.Beverages, "juice", Kept.Fridge, "#B0122C"),
         R("juice|lemonade|iced tea", FoodGroup.Beverages, "juice", Kept.Fridge),
-        R("sour cream|cream cheese|cottage cheese", FoodGroup.DairyAndEggs, "yogurt", Kept.Fridge, "#F1F1EC"),
+        R("sour cream|cream cheese|cottage cheese|ricotta", FoodGroup.DairyAndEggs, "tub", Kept.Fridge, "#F1F1EC"),
         R(@"milk\b|homo\b|homogeni[sz]ed|skim\b|cream\b|half.and.half|creamer|kefir|eggnog|buttermilk", FoodGroup.Beverages, "milk", Kept.Fridge),
         R(@"water\b", FoodGroup.Beverages, "bottle", Kept.Pantry, "#4FA3E0"),
         R("beer|lager|cider", FoodGroup.Beverages, "bottle", Kept.Fridge, "#8D5A1B"),
-        R("wine", FoodGroup.Beverages, "bottle", Kept.Pantry, "#7B1E3B"),
+        R("wine", FoodGroup.Beverages, "wine", Kept.Pantry, "#7B1E3B"),
+        R("white wine|ros[eé]", FoodGroup.Beverages, "wine", Kept.Fridge, "#E8D27A"),
         R("gatorade|powerade|sports drinks?|kombucha", FoodGroup.Beverages, "bottle", Kept.Fridge, "#26A69A"),
         R(@"coffee|espresso|\btea\b|hot chocolate|cocoa\b", FoodGroup.Beverages, "coffee", Kept.Cupboard),
         // Dairy and eggs
         R(@"eggs?\b", FoodGroup.DairyAndEggs, "eggs", Kept.Fridge),
-        R("butter|margarine", FoodGroup.DairyAndEggs, "butter", Kept.Fridge),
+        R("butter", FoodGroup.DairyAndEggs, "butter", Kept.Fridge),
+        R("margarine|becel", FoodGroup.DairyAndEggs, "tub", Kept.Fridge, "#F4D35E"),
         R("yogh?urt|skyr", FoodGroup.DairyAndEggs, "yogurt", Kept.Fridge),
         R("cheese|cheddar|mozzarella|parmesan|feta|brie|gouda|swiss|havarti|provolone", FoodGroup.DairyAndEggs, "cheese", Kept.Fridge),
         // Meat and fish
         R(@"sliced turkey|sliced chicken|deli\b|ham\b|salami|bologna|pastrami|prosciutto|pepperoni|cold cuts|lunch meat", FoodGroup.MeatAndFish, "beef", Kept.Fridge, "#E58F8A"),
         R(@"chicken|turkey|wings?\b|drumsticks?|thighs?", FoodGroup.MeatAndFish, "chicken", Kept.Fridge),
-        R("bacon", FoodGroup.MeatAndFish, "beef", Kept.Fridge, "#D35D5D"),
+        R("bacon", FoodGroup.MeatAndFish, "bacon", Kept.Fridge),
+        R(@"chicken (?:strips|fingers|tenders|bites)|tenders\b|nuggets|popcorn chicken", FoodGroup.MeatAndFish, "strips", Kept.Freezer),
+        R(@"ground (?:beef|pork|lamb|veal|chuck|round|sirloin)|lean ground|hamburger meat|mince\b|minced", FoodGroup.MeatAndFish, "groundbeef", Kept.Fridge),
+        R(@"ground (?:turkey|chicken)", FoodGroup.MeatAndFish, "groundbeef", Kept.Fridge, "#E8A49A"),
         R(@"pork|chops?\b|ribs\b|tenderloin", FoodGroup.MeatAndFish, "beef", Kept.Fridge, "#E58F8A"),
-        R("beef|steaks?|roast|brisket|mince|veal|lamb|meatballs?", FoodGroup.MeatAndFish, "beef", Kept.Fridge),
-        R("sausages?|hot ?dogs?|wieners?|bratwurst|kielbasa|chorizo", FoodGroup.MeatAndFish, "sausage", Kept.Fridge),
+        R("beef|steaks?|roast|brisket|veal|lamb|meatballs?", FoodGroup.MeatAndFish, "beef", Kept.Fridge),
+        R("sausages?|bratwurst|kielbasa|chorizo", FoodGroup.MeatAndFish, "sausage", Kept.Fridge),
+        R(@"hot ?dogs?|wieners?|franks\b|frankfurters?", FoodGroup.MeatAndFish, "hotdog", Kept.Fridge),
         R("burgers?|patt(?:y|ies)", FoodGroup.MeatAndFish, "burger", Kept.Fridge),
         R("salmon|trout", FoodGroup.MeatAndFish, "fish", Kept.Fridge, "#F08A5D"),
-        R("fish|tuna|cod\b|haddock|tilapia|halibut|sardines?|shrimp|prawns?|scallops?|crab|lobster|seafood|fillets?", FoodGroup.MeatAndFish, "fish", Kept.Fridge),
+        R("fish|tuna|cod\b|haddock|tilapia|halibut|sardines?|scallops?|crab|lobster|seafood|fillets?", FoodGroup.MeatAndFish, "fish", Kept.Fridge),
+        R("shrimp|prawns?", FoodGroup.MeatAndFish, "shrimp", Kept.Freezer),
         // Meals
         R("pizza", FoodGroup.Meals, "pizza", Kept.Fridge),
-        R(@"leftovers?|casserole|lasagna\b|perogies|pierogi|dumplings|egg rolls|spring rolls|nuggets|french fries|fries\b|fish sticks|pot pie|burritos?|frozen dinners?|tv dinners?|stew\b|chili\b|curry\b", FoodGroup.Meals, "noodles", Kept.Fridge, "#8D6E63"),
+        R(@"lasagna\b|perogies|pierogi|dumplings|egg rolls|spring rolls|french fries|fries\b|fish sticks|burritos?|frozen dinners?|tv dinners?", FoodGroup.Meals, "noodles", Kept.Fridge, "#8D6E63"),
+        R(@"leftovers?|casserole|stew\b|chili\b|curry\b|meal prep|lunch(?:es)?\b", FoodGroup.Meals, "container", Kept.Fridge),
+        R(@"pot pies?|meat pies?|tourti[eè]re|shepherd.?s pie|chicken pies?|steak pies?|mince pies?", FoodGroup.Meals, "pie", Kept.Freezer, "#C68B4E"),
         R("soups?|broth|stock\b|bouillon", FoodGroup.DryGoods, "tin", Kept.Pantry, "#C62828"),
         // Bread and bakery
-        R(@"bread\b|loaf|toast\b|bagels?|buns?\b|rolls?\b|baguette|croissants?|muffins?|pitas?\b|naan|tortillas?|wraps?\b|cakes?\b|pies?\b|donuts?|doughnuts?", FoodGroup.Bakery, "bread", Kept.Counter),
+        R(@"bread\b|toast\b", FoodGroup.Bakery, "bread", Kept.Counter),
+        R(@"loaf|loaves|(?:sourdough|rye|french|italian|crusty|artisan|pumpernickel|banana|raisin) bread|sourdough|ciabatta|brioche", FoodGroup.Bakery, "loaf", Kept.Counter),
+        R(@"baguettes?", FoodGroup.Bakery, "baguette", Kept.Counter),
+        R(@"bagels?", FoodGroup.Bakery, "bagel", Kept.Counter),
+        R(@"buns?\b|rolls?\b|kaisers?", FoodGroup.Bakery, "bun", Kept.Counter),
+        R(@"croissants?", FoodGroup.Bakery, "croissant", Kept.Counter),
+        R(@"pitas?\b|naan|tortillas?|wraps?\b|flatbreads?", FoodGroup.Bakery, "tortilla", Kept.Counter),
+        R(@"muffins?|cupcakes?|scones?", FoodGroup.Bakery, "muffin", Kept.Counter),
+        R(@"donuts?|doughnuts?|timbits", FoodGroup.Bakery, "donut", Kept.Counter),
+        R(@"pancakes?|waffles?|cr[eê]pes?|eggos?", FoodGroup.Bakery, "pancakes", Kept.Freezer),
+        R(@"cakes?\b|cheesecakes?|brownies?", FoodGroup.Bakery, "cake", Kept.Counter),
+        R(@"pies?\b|tarts?\b", FoodGroup.Bakery, "pie", Kept.Counter),
         // Dry goods
         R(@"spaghetti|macaroni|penne|lasagna noodles|fettuccine|linguine|rotini|fusilli|pasta|kraft dinner|\bkd\b|mac (?:and|&|n) cheese", FoodGroup.DryGoods, "box", Kept.Pantry, "#1E63B5"),
         R(@"noodles|ramen|udon|vermicelli", FoodGroup.DryGoods, "noodles", Kept.Pantry),
-        R("cereal|granola|cornflakes|cheerios|muesli|bran flakes", FoodGroup.DryGoods, "box", Kept.Pantry, "#F2A93B"),
+        R("cereal|granola|corn ?flakes|cheerios|muesli|bran flakes", FoodGroup.DryGoods, "box", Kept.Pantry, "#F2A93B"),
         R(@"oats|oatmeal|porridge", FoodGroup.DryGoods, "box", Kept.Pantry, "#C68B4E"),
-        R(@"bread ?crumbs|crackers?|flour|sugar|rice\b|quinoa|couscous|barley|lentils|chick ?peas|beans\b|baking soda|baking powder|yeast|cornstarch|cake mix|pancake mix|cocoa powder|chocolate chips", FoodGroup.DryGoods, "bag", Kept.Pantry, "#E8DCC4"),
+        R(@"bread ?crumbs|crackers?|quinoa|couscous|barley|lentils|chick ?peas|beans\b|baking soda|baking powder|yeast|cornstarch|cake mix|pancake mix|cocoa powder|chocolate chips", FoodGroup.DryGoods, "bag", Kept.Pantry, "#E8DCC4"),
+        R(@"flour|sugar|rice\b|cornmeal", FoodGroup.DryGoods, "sack", Kept.Pantry),
         R(@"oil\b|vinegar", FoodGroup.DryGoods, "bottle", Kept.Cupboard, "#D4A017"),
         // Snacks and sweets
-        R(@"chips|crisps|doritos|tostitos|pringles|cheetos|ruffles|lays\b|popcorn|pretzels", FoodGroup.Snacks, "bag", Kept.Pantry),
+        R(@"chips|crisps|doritos|tostitos|pringles|cheetos|ruffles|lays\b|pretzels", FoodGroup.Snacks, "bag", Kept.Pantry),
+        R(@"popcorn", FoodGroup.Snacks, "popcorn", Kept.Pantry),
         R(@"cookies?|biscuits|oreos?|wafers|granola bars?|protein bars?|snack bars?", FoodGroup.Snacks, "cookie", Kept.Pantry),
-        R(@"chocolate|candy|gummies|licorice|jujubes|gum\b|marshmallows", FoodGroup.Snacks, "cookie", Kept.Pantry, "#5D4037"),
+        R(@"candy|gummies|licorice|jujubes|gum\b|marshmallows", FoodGroup.Snacks, "cookie", Kept.Pantry, "#5D4037"),
+        R(@"chocolate|chocolate bars?|candy bars?|kit ?kats?|snickers|mars bars?|aero\b|coffee crisp|caramilk", FoodGroup.Snacks, "chocolate", Kept.Pantry),
         R(@"nuts\b|peanuts|almonds|cashews|walnuts|pecans|pistachios|seeds\b|raisins|dried fruit|trail mix", FoodGroup.Snacks, "bag", Kept.Pantry, "#A1887F"),
         // Fruit and vegetables
-        R(@"green beans|peas\b|corn\b|broccoli|cauliflower|brussels sprouts|asparagus|mixed vegetables|vegetables|veggies|stir.?fry", FoodGroup.Produce, "leafy", Kept.Fridge, "#4E9A2E"),
+        R(@"green beans|peas\b|brussels sprouts|asparagus|mixed vegetables|vegetables|veggies|stir.?fry", FoodGroup.Produce, "leafy", Kept.Fridge, "#4E9A2E"),
+        R(@"broccoli|broccolini", FoodGroup.Produce, "broccoli", Kept.Fridge),
+        R(@"cauliflower", FoodGroup.Produce, "broccoli", Kept.Fridge, "#EDE4CC"),
+        R(@"corn\b|corn on the cob|cobs? of corn", FoodGroup.Produce, "corn", Kept.Fridge),
         R(@"lettuce|spinach|kale|greens\b|salad\b|arugula|cabbage|romaine|chard|herbs\b|cilantro|parsley|celery|bok choy", FoodGroup.Produce, "leafy", Kept.Fridge),
-        R(@"cucumbers?|zucchini|squash|avocados?|eggplant", FoodGroup.Produce, "cucumber", Kept.Fridge),
+        R(@"cucumbers?|zucchini|squash|eggplant", FoodGroup.Produce, "cucumber", Kept.Fridge),
+        R(@"avocados?", FoodGroup.Produce, "avocado", Kept.Counter),
         R(@"carrots?|parsnips?|beets?|radish(?:es)?|turnips?", FoodGroup.Produce, "carrot", Kept.Fridge),
         R(@"tomato(?:es)?", FoodGroup.Produce, "tomato", Kept.Counter),
         R(@"peppers?\b|jalape[nñ]os?", FoodGroup.Produce, "pepper", Kept.Fridge),
         R(@"potato(?:es)?|yams?\b", FoodGroup.Produce, "potato", Kept.Pantry),
         R(@"garlic|shallots?", FoodGroup.Produce, "onion", Kept.Counter, "#E8DFCF"),
         R(@"onions?|leeks?|scallions?", FoodGroup.Produce, "onion", Kept.Pantry),
-        R(@"mushrooms?", FoodGroup.Produce, "potato", Kept.Fridge, "#BCAAA4"),
+        R(@"mushrooms?", FoodGroup.Produce, "mushroom", Kept.Fridge),
         R(@"apples?\b|pears?\b|peach(?:es)?|plums?\b|nectarines?|mangos?|mangoes|kiwis?|fruit\b", FoodGroup.Produce, "apple", Kept.Fridge),
         R(@"bananas?|plantains?", FoodGroup.Produce, "banana", Kept.Counter),
         R(@"lemons?|limes?\b", FoodGroup.Produce, "citrus", Kept.Fridge),
         R(@"oranges?|clementines?|mandarins?|tangerines?|grapefruits?", FoodGroup.Produce, "citrus", Kept.Fridge, "#F57C00"),
-        R(@"strawberr(?:y|ies)|raspberr(?:y|ies)|cherr(?:y|ies)", FoodGroup.Produce, "berries", Kept.Fridge, "#C62828"),
-        R(@"grapes?\b", FoodGroup.Produce, "berries", Kept.Fridge, "#6A2C91"),
+        R(@"strawberr(?:y|ies)", FoodGroup.Produce, "strawberry", Kept.Fridge),
+        R(@"raspberr(?:y|ies)|cherr(?:y|ies)", FoodGroup.Produce, "berries", Kept.Fridge, "#C62828"),
+        R(@"grapes?\b", FoodGroup.Produce, "grapes", Kept.Fridge),
         R(@"berr(?:y|ies)|blueberr(?:y|ies)|blackberr(?:y|ies)", FoodGroup.Produce, "berries", Kept.Fridge),
-        R(@"melons?|watermelons?|cantaloupe|pineapples?", FoodGroup.Produce, "apple", Kept.Counter, "#7CB342"),
+        R(@"watermelons?", FoodGroup.Produce, "watermelon", Kept.Counter),
+        R(@"melons?|cantaloupes?|honeydews?", FoodGroup.Produce, "watermelon", Kept.Counter, "#F5A25D"),
+        R(@"pineapples?", FoodGroup.Produce, "apple", Kept.Counter, "#F2C230"),
     ];
 
     [GeneratedRegex(@"\b(?:canned|tinned|cans? of)\b", RegexOptions.IgnoreCase)]
@@ -200,7 +259,7 @@ public static partial class Foods
             : new FoodLook(best.Group, best.Icon, best.Color, best.Kept);
 
         // A pepper, an apple or an onion of a colour.
-        if (look.Icon is "pepper" or "apple" or "onion" or "berries" && ColorWord().Match(text) is { Success: true } word)
+        if (look.Icon is "pepper" or "apple" or "onion" or "berries" or "grapes" && ColorWord().Match(text) is { Success: true } word)
             look = look with
             {
                 Color = (word.Value.ToLowerInvariant(), look.Icon) switch

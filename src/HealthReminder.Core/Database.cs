@@ -10,9 +10,9 @@ namespace Strongthium.HealthReminder;
 public sealed class Database : IDisposable
 {
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
-    // refills, and the kitchen's stock; 8: the places in the kitchen. Tables of their own that the
+    // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs. Tables of their own that the
     // CREATE adds.
-    private const int SchemaVersion = 8;
+    private const int SchemaVersion = 9;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -175,6 +175,14 @@ public sealed class Database : IDisposable
         AddColumn("pantry", "icon", "TEXT");
         AddColumn("pantry", "color", "TEXT");
         AddColumn("pantry", "food_group", "TEXT");
+        // 9: a second name (a brand), and the packs something's in and what a piece of it weighs.
+        AddColumn("pantry", "note", "TEXT");
+        AddColumn("pantry", "packs", "REAL");
+        AddColumn("pantry", "pack_word", "TEXT");
+        AddColumn("pantry", "size", "REAL");                // g, or mL with size_unit 'mL'
+        AddColumn("pantry", "size_unit", "TEXT");
+        AddColumn("pantry", "size_of", "TEXT");             // 'each' piece, or a whole 'pack'
+        AddColumn("pantry", "per_pack", "REAL");
         if (Convert.ToInt64(Scalar("SELECT count(*) FROM place"), CultureInfo.InvariantCulture) == 0)
             foreach (var place in KitchenPlace.Defaults) Save(place);
         Execute($"PRAGMA user_version = {SchemaVersion}");
@@ -675,17 +683,23 @@ public sealed class Database : IDisposable
         {
             using var command = connection.CreateCommand();
             command.CommandText = """
-                SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group
+                SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group,
+                       note, packs, pack_word, size, size_unit, size_of, per_pack
                 FROM pantry ORDER BY name COLLATE NOCASE
                 """;
             using var r = command.ExecuteReader();
             var items = new List<PantryItem>();
             DateTime? When(int column) => r.IsDBNull(column) ? null : DateTime.Parse(r.GetString(column), CultureInfo.InvariantCulture);
             string? Text(int column) => r.IsDBNull(column) ? null : r.GetString(column);
+            double? Number(int column) => r.IsDBNull(column) ? null : r.GetDouble(column);
             while (r.Read())
+            {
+                var packing = new Packing(Number(14), Text(15) ?? "pack", Number(16), Text(17) == "mL", Text(18) == "pack", Number(19));
                 items.Add(new(r.GetString(0), r.GetDouble(1), r.GetString(2), When(3), When(4)!.Value, r.GetInt64(5) != 0,
                     When(6) ?? default, When(7), r.GetInt64(8) != 0,
-                    r.IsDBNull(9) ? null : r.GetInt64(9), Text(10), Text(11), Enum.TryParse<FoodGroup>(Text(12), out var group) ? group : null));
+                    r.IsDBNull(9) ? null : r.GetInt64(9), Text(10), Text(11), Enum.TryParse<FoodGroup>(Text(12), out var group) ? group : null,
+                    Text(13), packing.IsEmpty ? null : packing));
+            }
             return items;
         }
     }
@@ -696,9 +710,20 @@ public sealed class Database : IDisposable
         {
             using var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group)
-                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet, $place, $icon, $color, $group)
+                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group,
+                                               note, packs, pack_word, size, size_unit, size_of, per_pack)
+                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet, $place, $icon, $color, $group,
+                        $note, $packs, $packWord, $size, $sizeUnit, $sizeOf, $perPack)
                 """;
+            object Or(object? value) => value ?? DBNull.Value;
+            var packing = item.Packing;
+            command.Parameters.AddWithValue("$note", Or(item.Note is { Length: > 0 } note ? note.Trim() : null));
+            command.Parameters.AddWithValue("$packs", Or(packing?.Packs));
+            command.Parameters.AddWithValue("$packWord", Or(packing?.Word));
+            command.Parameters.AddWithValue("$size", Or(packing?.Size));
+            command.Parameters.AddWithValue("$sizeUnit", Or(packing is null ? null : packing.Volume ? "mL" : "g"));
+            command.Parameters.AddWithValue("$sizeOf", Or(packing is null ? null : packing.OfPack ? "pack" : "each"));
+            command.Parameters.AddWithValue("$perPack", Or(packing?.PerPack));
             command.Parameters.AddWithValue("$place", item.Place is { } place ? place : DBNull.Value);
             command.Parameters.AddWithValue("$icon", (object?)item.Icon ?? DBNull.Value);
             command.Parameters.AddWithValue("$color", (object?)item.Color ?? DBNull.Value);
@@ -724,6 +749,23 @@ public sealed class Database : IDisposable
             command.CommandText = "DELETE FROM pantry WHERE name = $name";
             command.Parameters.AddWithValue("$name", name.Trim());
             command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>Something given another name; false when something else has that name already.</summary>
+    public bool Rename(PantryItem item, string name)
+    {
+        lock (gate)
+        {
+            var taken = Pantry().Any(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase) && !p.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase));
+            if (taken || name.Trim().Length == 0) return false;
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE pantry SET name = $name WHERE name = $old";
+            command.Parameters.AddWithValue("$name", name.Trim());
+            command.Parameters.AddWithValue("$old", item.Name.Trim());
+            command.ExecuteNonQuery();
+            Save(item with { Name = name.Trim() });
+            return true;
         }
     }
 

@@ -59,6 +59,36 @@ internal static class PantryLog
     /// <summary>Changed in the kitchen: its picture, group, best-before or place (which freezes or thaws it).</summary>
     public static void Changed(PantryItem item) => Database.Save(item);
 
+    /// <summary>Given another name; false when something else is called that already.</summary>
+    public static bool Rename(PantryItem item, string name) => Database.Rename(item, name);
+
+    /// <summary>Things moved to a place together: into a freezer they're frozen from now, out of one thawed.</summary>
+    public static void Move(IEnumerable<PantryItem> items, KitchenPlace to)
+    {
+        var now = DateTime.Now;
+        foreach (var item in items) Database.Save(Pantry.Move(item, to, now, Cold));
+    }
+
+    /// <summary>The order things are shown in, within each group.</summary>
+    public static KitchenSort Sort
+    {
+        get => Enum.TryParse<KitchenSort>(Database.Setting("kitchen_sort"), out var sort) ? sort : KitchenSort.Name;
+        set => Database.SetSetting("kitchen_sort", value.ToString());
+    }
+
+    /// <summary>Put in, or into the freezer, on another day: its best-before follows, unless set by hand.</summary>
+    public static PantryItem Added(PantryItem item, DateTime day) => Pantry.SetAdded(item, day, Cold);
+
+    public static PantryItem FrozenOn(PantryItem item, DateTime day) => Pantry.SetFrozen(item, day, Cold);
+
+    public static PantryItem UsualUseBy(PantryItem item) => Pantry.UsualUseBy(item, Cold);
+
+    /// <summary>Moved, as one is in its row: frozen or thawed as it goes.</summary>
+    public static PantryItem MovedTo(PantryItem item, KitchenPlace to) => Pantry.Move(item, to, DateTime.Now, Cold);
+
+    /// <summary>Counted, as typed in its row: this much there is now, all else as it was.</summary>
+    public static PantryItem Recounted(PantryItem item, string quantity) => Pantry.Set(item.Name, quantity, DateTime.Now, existing: item, cold: Cold);
+
     /// <summary>A place added at the end.</summary>
     public static void AddPlace(string name, Kept kind)
     {

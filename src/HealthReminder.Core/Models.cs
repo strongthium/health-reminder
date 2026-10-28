@@ -285,7 +285,7 @@ public static class Amounts
 
     public static string Plural(string unit) =>
         Abbreviations.Contains(unit) || unit.EndsWith('s') ? unit
-        : unit.EndsWith("ch", StringComparison.Ordinal) || unit.EndsWith("sh", StringComparison.Ordinal) || unit.EndsWith('o') ? unit + "es"
+        : unit.EndsWith("ch", StringComparison.Ordinal) || unit.EndsWith("sh", StringComparison.Ordinal) || unit.EndsWith('o') || unit.EndsWith('x') ? unit + "es"
         : unit.Length > 1 && unit[^1] == 'y' && !"aeiou".Contains(unit[^2]) ? unit[..^1] + "ies"
         : unit + "s";
 }
