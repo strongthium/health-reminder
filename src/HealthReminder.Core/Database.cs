@@ -10,9 +10,9 @@ namespace Strongthium.HealthReminder;
 public sealed class Database : IDisposable
 {
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
-    // refills, and the kitchen's stock. Tables of their own that the
+    // refills, and the kitchen's stock; 8: the places in the kitchen. Tables of their own that the
     // CREATE adds.
-    private const int SchemaVersion = 7;
+    private const int SchemaVersion = 8;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -142,6 +142,12 @@ public sealed class Database : IDisposable
                 counted TEXT NOT NULL,                 -- when it was last counted (bought, photographed or checked)
                 unsure  INTEGER NOT NULL DEFAULT 0     -- the amount is a guess: from a photo, or used past zero
             );
+            CREATE TABLE IF NOT EXISTS place (
+                id   INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                kind TEXT NOT NULL,                    -- Kept: Freezer, Fridge, Pantry, Cupboard, Counter
+                sort INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE IF NOT EXISTS exercise_log (
                 day     TEXT PRIMARY KEY,           -- "yyyy-MM-dd"
                 title   TEXT NOT NULL,
@@ -164,6 +170,13 @@ public sealed class Database : IDisposable
         AddColumn("pantry", "added", "TEXT");
         AddColumn("pantry", "frozen", "TEXT");
         if (AddColumn("pantry", "use_by_set", "INTEGER NOT NULL DEFAULT 0")) Execute("UPDATE pantry SET use_by_set = 1 WHERE use_by IS NOT NULL");
+        // 8: the places things are kept, and the picture, colour and group picked for each. Null is what its name says.
+        AddColumn("pantry", "place", "INTEGER");
+        AddColumn("pantry", "icon", "TEXT");
+        AddColumn("pantry", "color", "TEXT");
+        AddColumn("pantry", "food_group", "TEXT");
+        if (Convert.ToInt64(Scalar("SELECT count(*) FROM place"), CultureInfo.InvariantCulture) == 0)
+            foreach (var place in KitchenPlace.Defaults) Save(place);
         Execute($"PRAGMA user_version = {SchemaVersion}");
     }
 
@@ -661,13 +674,18 @@ public sealed class Database : IDisposable
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set FROM pantry ORDER BY name COLLATE NOCASE";
+            command.CommandText = """
+                SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group
+                FROM pantry ORDER BY name COLLATE NOCASE
+                """;
             using var r = command.ExecuteReader();
             var items = new List<PantryItem>();
             DateTime? When(int column) => r.IsDBNull(column) ? null : DateTime.Parse(r.GetString(column), CultureInfo.InvariantCulture);
+            string? Text(int column) => r.IsDBNull(column) ? null : r.GetString(column);
             while (r.Read())
                 items.Add(new(r.GetString(0), r.GetDouble(1), r.GetString(2), When(3), When(4)!.Value, r.GetInt64(5) != 0,
-                    When(6) ?? default, When(7), r.GetInt64(8) != 0));
+                    When(6) ?? default, When(7), r.GetInt64(8) != 0,
+                    r.IsDBNull(9) ? null : r.GetInt64(9), Text(10), Text(11), Enum.TryParse<FoodGroup>(Text(12), out var group) ? group : null));
             return items;
         }
     }
@@ -678,9 +696,13 @@ public sealed class Database : IDisposable
         {
             using var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set)
-                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet)
+                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group)
+                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet, $place, $icon, $color, $group)
                 """;
+            command.Parameters.AddWithValue("$place", item.Place is { } place ? place : DBNull.Value);
+            command.Parameters.AddWithValue("$icon", (object?)item.Icon ?? DBNull.Value);
+            command.Parameters.AddWithValue("$color", (object?)item.Color ?? DBNull.Value);
+            command.Parameters.AddWithValue("$group", item.Group is { } group ? group.ToString() : DBNull.Value);
             command.Parameters.AddWithValue("$added", item.Added == default ? DBNull.Value : item.Added.ToString("s", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$frozen", item.Frozen is { } frozen ? frozen.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
             command.Parameters.AddWithValue("$useBySet", item.UseBySet);
@@ -701,6 +723,50 @@ public sealed class Database : IDisposable
             using var command = connection.CreateCommand();
             command.CommandText = "DELETE FROM pantry WHERE name = $name";
             command.Parameters.AddWithValue("$name", name.Trim());
+            command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>The places in the kitchen, in the order they're shown.</summary>
+    public List<KitchenPlace> Places()
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT id, name, kind, sort FROM place ORDER BY sort, id";
+            using var r = command.ExecuteReader();
+            var places = new List<KitchenPlace>();
+            while (r.Read())
+                places.Add(new(r.GetInt64(0), r.GetString(1), Enum.TryParse<Kept>(r.GetString(2), out var kind) ? kind : Kept.Pantry, r.GetInt32(3)));
+            return places;
+        }
+    }
+
+    /// <summary>A place added (an Id of 0) or changed; its Id.</summary>
+    public long Save(KitchenPlace place)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = place.Id == 0
+                ? "INSERT INTO place (name, kind, sort) VALUES ($name, $kind, $sort); SELECT last_insert_rowid()"
+                : "UPDATE place SET name = $name, kind = $kind, sort = $sort WHERE id = $id; SELECT $id";
+            command.Parameters.AddWithValue("$id", place.Id);
+            command.Parameters.AddWithValue("$name", place.Name.Trim());
+            command.Parameters.AddWithValue("$kind", place.Kind.ToString());
+            command.Parameters.AddWithValue("$sort", place.Sort);
+            return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+    }
+
+    /// <summary>A place taken away: what was in it goes back to where its kind goes.</summary>
+    public void DeletePlace(long id)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE pantry SET place = NULL WHERE place = $id; DELETE FROM place WHERE id = $id";
+            command.Parameters.AddWithValue("$id", id);
             command.ExecuteNonQuery();
         }
     }

@@ -61,32 +61,99 @@ public sealed class SeenRow(SeenFood food)
         + (Unsure ? " · not sure what it is" : "");
 }
 
-/// <summary>Something in the kitchen's stock: how much, when it's best used by, whether it's in the freezer and whether
-/// it's in doubt; with a box to type what there is when it's counted.</summary>
-public sealed class PantryRow(PantryItem item, MeasureSystem system, DateTime now)
+/// <summary>Something in the kitchen's stock, on a line: its picture, how much, when it's best used by and whether it's
+/// in doubt, with a box to type what there is when it's counted. The rest is in <see cref="Detail"/>, its tooltip.</summary>
+public sealed class PantryRow(PantryItem item, MeasureSystem system, DateTime now) : INotifyPropertyChanged
 {
-    private static readonly System.Windows.Media.Brush Soon = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC2, 0x57, 0x00));
+    private static readonly System.Windows.Media.Brush Soon = KindLook.Brush(System.Windows.Media.Color.FromRgb(0xC2, 0x57, 0x00));
+    private static readonly System.Windows.Media.Brush Past = KindLook.Brush(System.Windows.Media.Color.FromRgb(0xD6, 0x45, 0x41));
 
     public PantryItem Item => item;
+    public string Icon => item.ShownIcon;
+    public string? Tint => item.ShownColor;
     public string Shown => Pantry.Show(item, system);
     public bool InDoubt => item.Unsure || now - item.Counted > Pantry.Recount && item.Amount > 0;
-    public string Count { get; set; } = "";
-    public bool InFreezer => item.InFreezer;
-    public DateTime? UseBy => item.UseBy;
-    public bool UseBySet => item.UseBySet;
+    /// <summary>What was typed to count it; Set shows once there is some, and "Right" while there isn't.</summary>
+    public string Count
+    {
+        get => count;
+        set
+        {
+            count = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Typed)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanSayRight)));
+        }
+    }
+    private string count = "";
+    public bool Typed => count.Trim().Length > 0;
+    public bool CanSayRight => InDoubt && !Typed;
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>"good until Nov 3", "use by Thursday", "past its best Oct 30", "keeps".</summary>
+    public string When => item.UseBy is { } by
+        ? by.Date < now.Date ? $"past its best {by:MMM d}"
+        : by.Date == now.Date ? "use today"
+        : by.Date == now.Date.AddDays(1) ? "use by tomorrow"
+        : by.Date <= now.Date.AddDays(2) ? $"use by {by:dddd}"
+        : by.Year == now.Year || by < now.AddMonths(3) ? $"good until {by:MMM d}" : $"good until {by:MMM yyyy}"
+        : "keeps";
+
+    // Not null: a null brush draws the text in nothing.
+    public System.Windows.Media.Brush WhenBrush => item.UseBy is { } by && by.Date < now.Date ? Past
+        : item.UseBy is { } soon && soon.Date <= now.Date.AddDays(2) ? Soon
+        : (System.Windows.Media.Brush)Application.Current.FindResource("TextFillColorSecondaryBrush");
+
     public string Detail => string.Join(" · ", new[]
     {
-        item.UseBy is { } by
-            ? by.Date < now.Date ? $"was best by {by:ddd MMM d}" : by.Date <= now.Date.AddDays(2) ? $"use by {by:dddd}" : $"good until about {by:MMM d}"
-            : "keeps",
-        item.Frozen is { } frozen ? $"frozen {frozen:MMM d}, {Pantry.FreezerNote(item.Name)}" : $"added {item.Since:MMM d}",
-        item.UseBySet ? "its own date" : "",
+        item.Frozen is { } frozen ? $"Frozen {frozen:MMM d}, {Pantry.FreezerNote(item.Name)}" : $"Added {item.Since:MMM d}",
+        item.UseBySet ? "best-before set by hand" : "",
         $"counted {item.Counted:MMM d}",
         item.Unsure ? "the amount is a guess" : "",
     }.Where(p => p.Length > 0));
-    // Not null: a null brush draws the text in nothing.
-    public System.Windows.Media.Brush DetailBrush => item.UseBy is { } by && by.Date <= now.Date.AddDays(2) ? Soon
-        : (System.Windows.Media.Brush)Application.Current.FindResource("TextFillColorSecondaryBrush");
+}
+
+/// <summary>A group of what's in a place ("Beverages"), and what's in it.</summary>
+public sealed record GroupSection(string Title, List<PantryRow> Rows);
+
+/// <summary>A place in the kitchen and what's in it, by group; shown closed to just its heading when it's put away.</summary>
+public sealed class PlaceSection(KitchenPlace place, List<GroupSection> groups, bool open)
+{
+    public KitchenPlace Place => place;
+    public string Icon => FoodIcons.IconOf(place.Kind);
+    public string Name => place.Name;
+    public List<GroupSection> Groups => groups;
+    public bool Open => open;
+    public string Chevron => open ? "" : "";
+    public string CountText
+    {
+        get
+        {
+            var rows = groups.SelectMany(g => g.Rows).ToList();
+            var doubt = rows.Count(r => r.InDoubt);
+            return $"{rows.Count} {(rows.Count == 1 ? "thing" : "things")}" + (doubt > 0 ? $" · {doubt} to check" : "");
+        }
+    }
+}
+
+/// <summary>A kind of place, as the list to pick one from shows it.</summary>
+public sealed record PlaceKindChoice(Kept Kind, string Name)
+{
+    public static readonly IReadOnlyList<PlaceKindChoice> All =
+        new[] { Kept.Freezer, Kept.Fridge, Kept.Pantry, Kept.Cupboard, Kept.Counter }.Select(k => new PlaceKindChoice(k, Foods.Name(k))).ToList();
+}
+
+/// <summary>A place, to rename, make another kind, move up or down, or take away.</summary>
+public sealed class PlaceRow(KitchenPlace place, int count, bool first, bool last, bool only)
+{
+    public KitchenPlace Place => place;
+    public string Name { get; set; } = place.Name;
+    public Kept Kind => place.Kind;
+    public string Icon => FoodIcons.IconOf(place.Kind);
+    public IReadOnlyList<PlaceKindChoice> Kinds => PlaceKindChoice.All;
+    public string CountText => count == 0 ? "empty" : $"{count} {(count == 1 ? "thing" : "things")}";
+    public bool CanUp => !first;
+    public bool CanDown => !last;
+    public bool CanDelete => !only;
 }
 
 /// <summary>
@@ -121,12 +188,27 @@ public sealed partial class GroceriesPage : UserControl, IPage
         NameBox.Text = typed;
         ShowQuantityHint();
 
-        // The stock: what's in doubt first, then what's soonest to use.
+        // The stock: by place, in the places' order, and in each by group, by name.
         var now = DateTime.Now;
-        var kitchen = PantryLog.Items().Select(p => new PantryRow(p, system, now))
-            .OrderByDescending(r => r.InDoubt).ThenBy(r => r.Item.UseBy ?? DateTime.MaxValue).ThenBy(r => r.Item.Name, StringComparer.OrdinalIgnoreCase)
+        var places = PantryLog.Places();
+        var kitchen = PantryLog.Items().Select(p => new PantryRow(p, system, now)).ToList();
+        var placeOf = kitchen.ToDictionary(r => r, r => Pantry.PlaceOf(r.Item, places).Id);
+        var closed = ClosedPlaces();
+        KitchenList.ItemsSource = places
+            .Select(place => new PlaceSection(place,
+                kitchen.Where(r => placeOf[r] == place.Id)
+                    .GroupBy(r => r.Item.ShownGroup).OrderBy(g => g.Key)
+                    .Select(g => new GroupSection(Foods.Name(g.Key), g.OrderBy(r => r.Item.Name, StringComparer.OrdinalIgnoreCase).ToList()))
+                    .ToList(),
+                !closed.Contains(place.Id)))
+            .Where(s => s.Groups.Count > 0)
             .ToList();
-        KitchenList.ItemsSource = kitchen;
+        PlaceList.ItemsSource = places.Select((place, i) => new PlaceRow(place, placeOf.Values.Count(id => id == place.Id), i == 0, i == places.Count - 1, places.Count == 1)).ToList();
+        if (NewPlaceKind.ItemsSource is null)
+        {
+            NewPlaceKind.ItemsSource = PlaceKindChoice.All;
+            NewPlaceKind.SelectedIndex = 0;
+        }
         NoKitchen.Show(kitchen.Count == 0);
         var doubt = kitchen.Count(r => r.InDoubt);
         KitchenSummary.Text = kitchen.Count == 0 ? "" : $"{kitchen.Count} things" + (doubt > 0 ? $" · {doubt} to check" : "");
@@ -230,29 +312,99 @@ public sealed partial class GroceriesPage : UserControl, IPage
         Refresh();
     }
 
-    private void PantryFreezer_Click(object sender, RoutedEventArgs e)
+    private void PantryCount_KeyDown(object sender, KeyEventArgs e)
     {
-        if (PantryRowOf(sender) is not { } row || sender is not CheckBox box) return;
-        PantryLog.Freezer(row.Item, box.IsChecked == true);
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        PantrySet_Click(sender, e);
+    }
+
+    /// <summary>Its picture and colour, its place (which freezes or thaws it), its group and its best-before.</summary>
+    private void PantryLook_Click(object sender, RoutedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row) return;
+        var dialog = new FoodLookWindow(row.Item, PantryLog.Places()) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true || dialog.Result is not { } changed) return;
+        PantryLog.Changed(changed);
         Refresh();
         App.KitchenChanged();
     }
 
-    /// <summary>A best-before picked by hand. The date shown when the list is drawn raises this too, and is ignored.</summary>
-    private void PantryDate_Changed(object sender, SelectionChangedEventArgs e)
+    // ---- The places -------------------------------------------------------------------------------------------
+
+    /// <summary>The places shown closed, to just their heading.</summary>
+    private static HashSet<long> ClosedPlaces() =>
+        (App.Database.Setting("kitchen_closed") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : 0).ToHashSet();
+
+    private void PlaceToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (PantryRowOf(sender) is not { } row || sender is not DatePicker picker || picker.SelectedDate?.Date == row.Item.UseBy?.Date) return;
-        PantryLog.UseBy(row.Item, picker.SelectedDate);
+        if ((sender as FrameworkElement)?.DataContext is not PlaceSection section) return;
+        var closed = ClosedPlaces();
+        if (!closed.Remove(section.Place.Id)) closed.Add(section.Place.Id);
+        App.Database.SetSetting("kitchen_closed", string.Join(',', closed.Select(id => id.ToString(CultureInfo.InvariantCulture))));
+        Refresh();
+    }
+
+    private void Places_Click(object sender, RoutedEventArgs e) => PlacesCard.Show(!PlacesCard.IsVisible);
+
+    private static PlaceRow? PlaceRowOf(object sender) => (sender as FrameworkElement)?.DataContext as PlaceRow;
+
+    private void PlaceName_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (PlaceRowOf(sender) is not { } row || row.Name.Trim().Length == 0 || row.Name.Trim() == row.Place.Name) return;
+        PantryLog.ChangePlace(row.Place with { Name = row.Name.Trim() });
+        Refresh();
+    }
+
+    private void PlaceName_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        PlaceName_LostFocus(sender, e);
+    }
+
+    /// <summary>Another kind: what was put in it is frozen or thawed to match.</summary>
+    private void PlaceKind_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (PlaceRowOf(sender) is not { } row || sender is not ComboBox { SelectedValue: Kept kind } || kind == row.Place.Kind) return;
+        PantryLog.ChangePlace(row.Place with { Kind = kind });
         Dispatcher.InvokeAsync(Refresh);
         App.KitchenChanged();
     }
 
-    private void PantryUsualDate_Click(object sender, RoutedEventArgs e)
+    private void PlaceUp_Click(object sender, RoutedEventArgs e) => MovePlace(sender, -1);
+
+    private void PlaceDown_Click(object sender, RoutedEventArgs e) => MovePlace(sender, 1);
+
+    private void MovePlace(object sender, int by)
     {
-        if (PantryRowOf(sender) is not { } row) return;
-        PantryLog.UseBy(row.Item, null);
+        if (PlaceRowOf(sender) is not { } row) return;
+        PantryLog.MovePlace(row.Place, by);
+        Refresh();
+    }
+
+    private void PlaceDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (PlaceRowOf(sender) is not { } row) return;
+        PantryLog.DeletePlace(row.Place);
         Refresh();
         App.KitchenChanged();
+    }
+
+    private void NewPlace_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        AddPlace_Click(sender, e);
+    }
+
+    private void AddPlace_Click(object sender, RoutedEventArgs e)
+    {
+        if (NewPlaceKind.SelectedValue is not Kept kind) return;
+        PantryLog.AddPlace(NewPlaceName.Text, kind);
+        NewPlaceName.Text = "";
+        Refresh();
     }
 
     private void PantryGone_Click(object sender, RoutedEventArgs e)

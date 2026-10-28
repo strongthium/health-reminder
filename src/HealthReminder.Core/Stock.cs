@@ -17,14 +17,43 @@ public sealed record Supply(double OnHand, double DailyUse)
 /// more was used than was counted), so it's worth checking. <paramref name="Added"/> is when it was bought or put in
 /// (or thawed), <paramref name="Frozen"/> when it went in the freezer (null when it isn't in it), and
 /// <paramref name="UseBySet"/> whether <paramref name="UseBy"/> was set by hand or read from a photo rather than worked
-/// out from those.</summary>
+/// out from those. <paramref name="Place"/> is the place it was put in (null for where it goes, by what it is), and
+/// <paramref name="Icon"/>, <paramref name="Color"/> and <paramref name="Group"/> what was picked for it, null for what
+/// its name says (<see cref="Foods.Guess"/>).</summary>
 public sealed record PantryItem(string Name, double Amount, string Unit, DateTime? UseBy, DateTime Counted, bool Unsure,
-    DateTime Added = default, DateTime? Frozen = null, bool UseBySet = false)
+    DateTime Added = default, DateTime? Frozen = null, bool UseBySet = false,
+    long? Place = null, string? Icon = null, string? Color = null, FoodGroup? Group = null)
 {
     public bool InFreezer => Frozen is not null;
 
     /// <summary>When it was put in: <see cref="Added"/>, or for what was kept before that was known, when it was counted.</summary>
     public DateTime Since => Added == default ? Counted : Added;
+
+    /// <summary>What its name says it is.</summary>
+    public FoodLook Guess => Foods.Guess(Name);
+
+    public string ShownIcon => Icon ?? Guess.Icon;
+
+    /// <summary>Its picture's colour: the one picked, or the one its name says while its picture is the one its name
+    /// says ("Pepsi" is blue); null for the picture's own.</summary>
+    public string? ShownColor => Color ?? (Icon is null ? Guess.Color : null);
+
+    public FoodGroup ShownGroup => Group ?? Guess.Group;
+}
+
+/// <summary>A place in the kitchen things are kept, named as its owner likes ("Deep freezer"), of a
+/// <paramref name="Kind"/>: what's in one of kind Freezer is frozen. Shown in the order of <paramref name="Sort"/>.</summary>
+public sealed record KitchenPlace(long Id, string Name, Kept Kind, int Sort = 0)
+{
+    /// <summary>The places a new kitchen has, in the order they're shown.</summary>
+    public static readonly IReadOnlyList<KitchenPlace> Defaults =
+    [
+        new(0, "Freezer", Kept.Freezer, 0),
+        new(0, "Fridge", Kept.Fridge, 1),
+        new(0, "Pantry", Kept.Pantry, 2),
+        new(0, "Cupboard", Kept.Cupboard, 3),
+        new(0, "Counter", Kept.Counter, 4),
+    ];
 }
 
 /// <summary>
@@ -193,6 +222,42 @@ public static partial class Pantry
     /// fish is a day or two in the fridge.</summary>
     public static PantryItem Thaw(PantryItem item, DateTime now, ColdStorage? cold = null) =>
         Refresh(item with { Frozen = null, Added = now, UseBySet = false }, cold);
+
+    /// <summary>
+    /// Where something is: the place it was put in, while that's there and is a freezer just when it's frozen; or else
+    /// the first place of the kind its name says (a freezer for what's frozen), or the nearest kind there is.
+    /// </summary>
+    public static KitchenPlace PlaceOf(PantryItem item, IReadOnlyList<KitchenPlace> places)
+    {
+        if (item.Place is { } id && places.FirstOrDefault(p => p.Id == id) is { } chosen && chosen.Kind == Kept.Freezer == item.InFreezer)
+            return chosen;
+        var kind = item.InFreezer ? Kept.Freezer : item.Guess.Kept;
+        Kept[] near = kind switch
+        {
+            Kept.Freezer => [Kept.Freezer, Kept.Fridge],
+            Kept.Fridge => [Kept.Fridge, Kept.Pantry, Kept.Cupboard, Kept.Counter],
+            Kept.Pantry => [Kept.Pantry, Kept.Cupboard, Kept.Counter],
+            Kept.Cupboard => [Kept.Cupboard, Kept.Pantry, Kept.Counter],
+            _ => [Kept.Counter, Kept.Pantry, Kept.Cupboard],
+        };
+        var ordered = places.OrderBy(p => p.Sort).ToList();
+        foreach (var k in near)
+            if (ordered.FirstOrDefault(p => p.Kind == k) is { } place) return place;
+        return ordered[0];
+    }
+
+    /// <summary>Moved to another place: into a freezer it's frozen from now, out of one it's thawed from now, and
+    /// between two freezers it keeps the day it went in.</summary>
+    public static PantryItem Move(PantryItem item, KitchenPlace to, DateTime now, ColdStorage? cold = null)
+    {
+        var moved = item with { Place = to.Id };
+        return (to.Kind == Kept.Freezer, item.InFreezer) switch
+        {
+            (true, false) => Freeze(moved, now, cold),
+            (false, true) => Thaw(moved, now, cold),
+            _ => moved,
+        };
+    }
 
     /// <summary>A best-before set by hand, kept until it's put back to the usual one, frozen or thawed.</summary>
     public static PantryItem SetUseBy(PantryItem item, DateTime? useBy) => item with { UseBy = useBy?.Date, UseBySet = true };

@@ -54,9 +54,42 @@ internal static class PantryLog
         Database.Save(Pantry.Set(name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, Find(name), inFreezer, Cold));
     }
 
-    /// <summary>Put in the freezer, or taken out to thaw.</summary>
-    public static void Freezer(PantryItem item, bool inFreezer) =>
-        Database.Save(inFreezer ? Pantry.Freeze(item, DateTime.Now, Cold) : Pantry.Thaw(item, DateTime.Now, Cold));
+    public static List<KitchenPlace> Places() => Database.Places();
+
+    /// <summary>Changed in the kitchen: its picture, group, best-before or place (which freezes or thaws it).</summary>
+    public static void Changed(PantryItem item) => Database.Save(item);
+
+    /// <summary>A place added at the end.</summary>
+    public static void AddPlace(string name, Kept kind)
+    {
+        var places = Database.Places();
+        Database.Save(new KitchenPlace(0, name.Trim().Length > 0 ? name.Trim() : Foods.Name(kind), kind, places.Count == 0 ? 0 : places.Max(p => p.Sort) + 1));
+    }
+
+    /// <summary>A place renamed, or made another kind: what was put in it is frozen or thawed to match.</summary>
+    public static void ChangePlace(KitchenPlace place)
+    {
+        Database.Save(place);
+        var now = DateTime.Now;
+        foreach (var item in Database.Pantry().Where(p => p.Place == place.Id))
+            Database.Save(Pantry.Move(item, place, now, Cold));
+    }
+
+    /// <summary>A place moved up or down one.</summary>
+    public static void MovePlace(KitchenPlace place, int by)
+    {
+        var places = Database.Places();
+        var at = places.FindIndex(p => p.Id == place.Id);
+        if (at < 0 || at + by < 0 || at + by >= places.Count) return;
+        (places[at], places[at + by]) = (places[at + by], places[at]);
+        for (var i = 0; i < places.Count; i++) Database.Save(places[i] with { Sort = i });
+    }
+
+    /// <summary>A place taken away, unless it's the last: what was in it goes where its kind goes.</summary>
+    public static void DeletePlace(KitchenPlace place)
+    {
+        if (Database.Places().Count > 1) Database.DeletePlace(place.Id);
+    }
 
     /// <summary>A best-before set by hand; null puts it back to the usual one.</summary>
     public static void UseBy(PantryItem item, DateTime? useBy) =>

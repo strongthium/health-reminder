@@ -194,54 +194,177 @@
         </ItemsControl>
       </StackPanel>
 
-      <!-- In the kitchen: the stock -->
+      <!-- In the kitchen: the stock, by the place it's kept and then by its group, a line each. -->
       <StackPanel x:Name="KitchenPanel">
-        <StackPanel Orientation="Horizontal" Margin="2,20,0,8">
-          <TextBlock Text="Your kitchen" Style="{StaticResource Heading}" FontSize="15" />
-          <TextBlock x:Name="KitchenSummary" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
-        </StackPanel>
-        <Border Style="{StaticResource Card}" Padding="16,10">
+        <Grid Margin="2,20,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+            <TextBlock Text="Your kitchen" Style="{StaticResource Heading}" FontSize="15" />
+            <TextBlock x:Name="KitchenSummary" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+          </StackPanel>
+          <Button Grid.Column="1" Click="Places_Click" Padding="12,6" ToolTip="Add, name and order the places things are kept: a second freezer, a pantry…">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE70F;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+              <TextBlock Text="Places" />
+            </StackPanel>
+          </Button>
+        </Grid>
+
+        <!-- The places, to add, name, order and take away. -->
+        <Border x:Name="PlacesCard" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,12" Visibility="Collapsed">
           <StackPanel>
-            <TextBlock x:Name="NoKitchen" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4"
-                       Text="Nothing yet. What you buy (Got it), what's in your photos, and what you add with I have it come here, and the meals you cook take off what they use." />
-            <ItemsControl x:Name="KitchenList" Focusable="False">
+            <TextBlock Text="Where things are kept, in the order they're shown. What's in a freezer is frozen: its best-before is how long it keeps frozen."
+                       Style="{StaticResource Caption}" Margin="0,0,0,8" />
+            <ItemsControl x:Name="PlaceList" Focusable="False">
               <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="{x:Type local:PantryRow}">
-                  <Grid Margin="0,4">
+                <DataTemplate DataType="{x:Type local:PlaceRow}">
+                  <Grid Margin="0,3">
                     <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="220" />
+                      <ColumnDefinition Width="150" />
                       <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
-                      <WrapPanel>
-                        <TextBlock Text="{Binding Item.Name}" FontWeight="SemiBold" Margin="0,0,8,0" />
-                        <TextBlock Text="{Binding Shown}" Margin="0,0,8,0" />
-                        <Border Style="{StaticResource Chip}" Background="#C25700" Visibility="{Binding InDoubt, Converter={StaticResource VisibleIf}}">
-                          <TextBlock Text="check" />
-                        </Border>
-                      </WrapPanel>
-                      <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" Foreground="{Binding DetailBrush}" TextWrapping="Wrap" />
-                      <WrapPanel Margin="0,4,0,0">
-                        <CheckBox Content="In the freezer" IsChecked="{Binding InFreezer, Mode=OneWay}" Click="PantryFreezer_Click" VerticalAlignment="Center" Margin="0,0,16,0"
-                                  ToolTip="Put in the freezer today: its best-before is how long it keeps frozen. Unticked, it's taken out to thaw." />
-                        <TextBlock Text="Best before" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <DatePicker SelectedDate="{Binding UseBy, Mode=OneWay}" SelectedDateChanged="PantryDate_Changed" Width="160" Margin="0,0,8,0"
-                                    ToolTip="Worked out from when it was added (or frozen); pick another date to change it" />
-                        <Button Content="Usual date" Click="PantryUsualDate_Click" Padding="10,4" Visibility="{Binding UseBySet, Converter={StaticResource VisibleIf}}"
-                                ToolTip="Back to the date worked out from when it was added or frozen" />
-                      </WrapPanel>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                      <TextBox Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}" Width="120" Margin="0,0,6,0" ToolTip="How much there is now, in any unit: 3, 500 g, half a loaf…" />
-                      <Button Content="Set" Click="PantrySet_Click" Padding="10,4" Margin="0,0,6,0" ToolTip="Count it: this much there is now" />
-                      <Button Content="Right" Click="PantryRight_Click" Padding="10,4" Margin="0,0,6,0" ToolTip="The amount shown is right" />
-                      <Button Content="None left" Click="PantryGone_Click" Padding="10,4" />
+                    <local:FoodView Icon="{Binding Icon}" Width="30" Height="30" Margin="0,0,10,0" />
+                    <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" LostFocus="PlaceName_LostFocus" KeyDown="PlaceName_KeyDown"
+                             Margin="0,0,8,0" ToolTip="Its name: Fridge, Deep freezer, Basement shelves…" />
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding Kinds}" DisplayMemberPath="Name" SelectedValuePath="Kind" SelectedValue="{Binding Kind, Mode=OneWay}"
+                              SelectionChanged="PlaceKind_Changed" ToolTip="What kind of place it is" />
+                    <TextBlock Grid.Column="3" Text="{Binding CountText}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                      <Button Click="PlaceUp_Click" Padding="9,6" Margin="0,0,4,0" IsEnabled="{Binding CanUp}" ToolTip="Show it sooner">
+                        <TextBlock Text="&#xE70E;" Style="{StaticResource Icon}" FontSize="12" />
+                      </Button>
+                      <Button Click="PlaceDown_Click" Padding="9,6" Margin="0,0,4,0" IsEnabled="{Binding CanDown}" ToolTip="Show it later">
+                        <TextBlock Text="&#xE70D;" Style="{StaticResource Icon}" FontSize="12" />
+                      </Button>
+                      <Button Click="PlaceDelete_Click" Padding="9,6" IsEnabled="{Binding CanDelete}"
+                              ToolTip="Take it away: what's in it goes where its kind goes">
+                        <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="12" />
+                      </Button>
                     </StackPanel>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Separator Margin="0,10" />
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border Width="30" Margin="0,0,10,0" />
+              <TextBox x:Name="NewPlaceName" Grid.Column="1" Margin="0,0,8,0" KeyDown="NewPlace_KeyDown" ToolTip="A name for it: Deep freezer, Garage fridge…" />
+              <ComboBox x:Name="NewPlaceKind" Grid.Column="2" DisplayMemberPath="Name" SelectedValuePath="Kind" />
+              <Button Grid.Column="3" Click="AddPlace_Click" Padding="12,6" Margin="8,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,8,0" />
+                  <TextBlock Text="Add a place" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="NoKitchen" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,10">
+          <TextBlock Style="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Nothing yet. What you buy (Got it), what's in your photos, and what you add with I have it come here, and the meals you cook take off what they use." />
+        </Border>
+
+        <ItemsControl x:Name="KitchenList" Focusable="False">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type local:PlaceSection}">
+              <Border Style="{StaticResource Card}" Padding="10,6,10,8" Margin="0,0,0,10">
+                <StackPanel>
+                  <Button Style="{StaticResource Bare}" Click="PlaceToggle_Click" HorizontalContentAlignment="Stretch" Padding="4,2" ToolTip="Show or hide what's in it">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <local:FoodView Icon="{Binding Icon}" Width="30" Height="30" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Heading}" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" />
+                      <TextBlock Grid.Column="2" Text="{Binding CountText}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,1,0,0" />
+                      <TextBlock Grid.Column="3" Text="{Binding Chevron}" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,6,0"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Grid>
+                  </Button>
+                  <ItemsControl ItemsSource="{Binding Groups}" Focusable="False" Visibility="{Binding Open, Converter={StaticResource VisibleIf}}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type local:GroupSection}">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Title}" Style="{StaticResource Caption}" FontWeight="SemiBold" Margin="8,10,0,2" />
+                          <ItemsControl ItemsSource="{Binding Rows}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate DataType="{x:Type local:PantryRow}">
+                                <Border x:Name="Back" CornerRadius="6" Padding="4,2" Background="Transparent" ToolTip="{Binding Detail}">
+                                  <Grid>
+                                    <Grid.ColumnDefinitions>
+                                      <ColumnDefinition Width="Auto" />
+                                      <ColumnDefinition Width="*" />
+                                      <ColumnDefinition Width="Auto" />
+                                      <ColumnDefinition Width="Auto" MinWidth="140" />
+                                      <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Style="{StaticResource Bare}" Click="PantryLook_Click" Width="40" Height="40" Padding="1"
+                                            ToolTip="Change its picture and colour, where it's kept, its group or its best-before">
+                                      <local:FoodView Icon="{Binding Icon}" Tint="{Binding Tint}" />
+                                    </Button>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="10,0,8,0" FontSize="14">
+                                      <Run Text="{Binding Item.Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="   " /><Run Text="{Binding Shown, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </TextBlock>
+                                    <Border Grid.Column="2" Style="{StaticResource Chip}" Background="#C25700" Margin="0,0,10,0" Padding="6,1,6,2"
+                                            Visibility="{Binding InDoubt, Converter={StaticResource VisibleIf}}"
+                                            ToolTip="In doubt: count it, or say the amount is right">
+                                      <TextBlock Text="check" />
+                                    </Border>
+                                    <TextBlock Grid.Column="3" Text="{Binding When}" Foreground="{Binding WhenBrush}" VerticalAlignment="Center" TextAlignment="Right"
+                                               TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                      <TextBox Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}" Width="80" MinWidth="0" Margin="0,0,4,0" KeyDown="PantryCount_KeyDown"
+                                               ToolTip="Count it: type how much there is now, in any unit (3, 500 g, half a loaf…), and press Enter or Set" />
+                                      <!-- One place for Set (once something's typed) and Right (while it's in doubt). -->
+                                      <Grid Width="52" Margin="0,0,4,0">
+                                        <Button Content="Set" Click="PantrySet_Click" Padding="0,5" MinWidth="0" HorizontalAlignment="Stretch" ToolTip="Count it: this much there is now"
+                                                Visibility="{Binding Typed, Converter={StaticResource VisibleIf}}" />
+                                        <Button Click="PantryRight_Click" Padding="0,6" MinWidth="0" HorizontalAlignment="Stretch" ToolTip="The amount shown is right"
+                                                Visibility="{Binding CanSayRight, Converter={StaticResource VisibleIf}}">
+                                          <TextBlock Text="&#xE73E;" Style="{StaticResource Icon}" FontSize="12" />
+                                        </Button>
+                                      </Grid>
+                                      <Button Click="PantryGone_Click" Padding="9,6" MinWidth="0" ToolTip="None left: take it off">
+                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="12" />
+                                      </Button>
+                                    </StackPanel>
+                                  </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                  <Trigger SourceName="Back" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                  </Trigger>
+                                </DataTemplate.Triggers>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Style="{StaticResource Card}" Padding="16,12">
+          <StackPanel>
             <WrapPanel>
               <CheckBox x:Name="CheckOnBox" Content="Set time aside to check the kitchen, when something's in doubt, on" VerticalAlignment="Center" Margin="0,0,8,4" Click="CheckTime_Changed" />
               <ComboBox x:Name="CheckDayBox" Width="140" Margin="0,0,8,4" SelectionChanged="CheckTime_Changed" />
@@ -249,7 +372,7 @@
               <local:TimeBox x:Name="CheckAtBox" Margin="0,0,0,4" />
             </WrapPanel>
             <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,0"
-                       Text="In doubt: an amount read from a photo, used past what was counted, or not counted for two weeks. The check lists them, and counting them here puts them right." />
+                       Text="In doubt: an amount read from a photo, used past what was counted, or not counted for two weeks. The check lists them, and counting them here puts them right. Click a picture to change it, or to move something to another place." />
           </StackPanel>
         </Border>
       </StackPanel>

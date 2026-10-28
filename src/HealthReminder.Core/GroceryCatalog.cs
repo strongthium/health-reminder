@@ -12,8 +12,9 @@ namespace Strongthium.HealthReminder;
 public sealed record GroceryInfo(string Name, string Unit, double Pack, string PackText, string Keeps, int OpenDays, bool Freezes = false, bool Staple = false,
     Kept Kept = Kept.Fridge, int KeepDays = 0, int FreezerMonths = 0);
 
-/// <summary>Where something is kept once it's bought.</summary>
-public enum Kept { Fridge, Freezer, Cupboard, Counter }
+/// <summary>Where something is kept once it's bought; also the kind of a place in the kitchen (<see cref="KitchenPlace"/>). The
+/// catalog says Cupboard for whatever keeps at room temperature, and the food's kind says whether that's the pantry.</summary>
+public enum Kept { Fridge, Freezer, Cupboard, Counter, Pantry }
 
 /// <summary>Something bought that's best used, or frozen, by a day.</summary>
 public sealed record UseSoonItem(GroceryInfo Info, DateTime Bought, DateTime UseBy);
