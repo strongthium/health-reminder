@@ -14,8 +14,57 @@ public sealed record Supply(double OnHand, double DailyUse)
 
 /// <summary>Something in the kitchen and how much: in the catalog's unit for what it knows ("g", "egg", "slice"), or the
 /// one typed ("g", "mL", or "" for a count). <paramref name="Unsure"/> when the amount is a guess (read from a photo, or
-/// more was used than was counted), so it's worth checking.</summary>
-public sealed record PantryItem(string Name, double Amount, string Unit, DateTime? UseBy, DateTime Counted, bool Unsure);
+/// more was used than was counted), so it's worth checking. <paramref name="Added"/> is when it was bought or put in
+/// (or thawed), <paramref name="Frozen"/> when it went in the freezer (null when it isn't in it), and
+/// <paramref name="UseBySet"/> whether <paramref name="UseBy"/> was set by hand or read from a photo rather than worked
+/// out from those.</summary>
+public sealed record PantryItem(string Name, double Amount, string Unit, DateTime? UseBy, DateTime Counted, bool Unsure,
+    DateTime Added = default, DateTime? Frozen = null, bool UseBySet = false)
+{
+    public bool InFreezer => Frozen is not null;
+
+    /// <summary>When it was put in: <see cref="Added"/>, or for what was kept before that was known, when it was counted.</summary>
+    public DateTime Since => Added == default ? Counted : Added;
+}
+
+/// <summary>
+/// How cold the fridge and freezer are, in °C: 4 °C (40 °F) and −18 °C (0 °F), the North American standard, unless set.
+/// Food keeps less long in a warmer one: in a fridge, roughly half as long for every 5 °C (9 °F) over 4 °C, as bacteria
+/// grow faster; in a freezer, roughly half as long for every 4 °C (7 °F) over −18 °C, as frozen food dries and goes off
+/// in taste sooner. A colder one isn't counted as keeping food longer.
+/// </summary>
+public sealed record ColdStorage(double FridgeC = ColdStorage.StandardFridgeC, double FreezerC = ColdStorage.StandardFreezerC)
+{
+    public const double StandardFridgeC = (40 - 32) / 1.8;
+    public const double StandardFreezerC = (0 - 32) / 1.8;
+
+    public static readonly ColdStorage Standard = new();
+
+    public static double ToF(double c) => c * 1.8 + 32;
+    public static double FromF(double f) => (f - 32) / 1.8;
+
+    /// <summary>How much of the usual time food keeps in the fridge: 1 at 4 °C or colder.</summary>
+    public double FridgeFactor => FridgeC <= StandardFridgeC + 0.05 ? 1 : Math.Max(0.2, Math.Pow(0.5, (FridgeC - StandardFridgeC) / 5));
+
+    /// <summary>How much of the usual time food keeps frozen: 1 at −18 °C or colder.</summary>
+    public double FreezerFactor => FreezerC <= StandardFreezerC + 0.05 ? 1 : Math.Max(0.1, Math.Pow(0.5, (FreezerC - StandardFreezerC) / 4));
+
+    /// <summary>What's wrong with the temperatures, if anything, with the standard ones in the unit given.</summary>
+    public List<string> Warnings(bool fahrenheit)
+    {
+        string T(double c) => fahrenheit ? $"{Math.Round(ToF(c)):0} °F" : $"{Math.Round(c):0} °C";
+        var warnings = new List<string>();
+        if (FridgeFactor < 1)
+            warnings.Add($"The fridge is warmer than {T(StandardFridgeC)}: bacteria grow faster above it, so food keeps less long, and its dates are shortened. Turn it colder.");
+        else if (FridgeC <= 0)
+            warnings.Add($"At {T(0)} or below, food in the fridge can freeze.");
+        if (FreezerC > -12)
+            warnings.Add($"The freezer is too warm to keep food frozen solid ({T(StandardFreezerC)} is the standard): turn it colder, or have it checked.");
+        else if (FreezerFactor < 1)
+            warnings.Add($"The freezer is warmer than {T(StandardFreezerC)}: frozen food loses its quality sooner, and its dates are shortened.");
+        return warnings;
+    }
+}
 
 /// <summary>
 /// The kitchen's stock: what's bought or seen in a photo goes in, what the meals cooked use comes out, and what's in
@@ -78,26 +127,86 @@ public static partial class Pantry
         : item.Unit == "mL" ? Quantities.Format(new Quantity(item.Amount, Dimension.Volume), system)
         : Amounts.Format(Math.Round(item.Amount * 4) / 4, item.Unit);
 
-    /// <summary>When it's best used by: what was said for it (from a photo), or what the catalog says it keeps.</summary>
-    public static DateTime? UseBy(string name, DateTime now, int useWithinDays = 0) =>
-        useWithinDays > 0 ? now.Date.AddDays(useWithinDays) : GroceryCatalog.Get(name) is { OpenDays: > 0 } info ? now.Date.AddDays(info.OpenDays) : null;
+    /// <summary>For something not in the catalog, how long it's taken to keep frozen.</summary>
+    public const int FreezerMonthsUnknown = 3;
+
+    /// <summary>
+    /// The usual best-before: in the freezer, from when it went in, for as long as it's at its best frozen; otherwise
+    /// from when it was bought, put in or thawed, for as long as it keeps where it's kept (a few days in the fridge, for
+    /// what was bought frozen and has thawed). Shortened by a warm fridge or freezer. Null when it keeps for years, or
+    /// isn't known; for what doesn't freeze well, as if it weren't frozen.
+    /// </summary>
+    public static DateTime? Usual(PantryItem item, ColdStorage? cold = null)
+    {
+        cold ??= ColdStorage.Standard;
+        var info = GroceryCatalog.Get(item.Name);
+        if (item.Frozen is { } frozen && (info is null || info.FreezerMonths > 0))
+            return frozen.Date.AddDays(Math.Max(1, Math.Round((info?.FreezerMonths ?? FreezerMonthsUnknown) * 30.4 * cold.FreezerFactor)));
+        var (days, fridge) = info switch
+        {
+            null => (0, false),
+            { Kept: Kept.Freezer } => (3, true),
+            _ => (info.KeepDays, info.Kept == Kept.Fridge),
+        };
+        return days > 0 ? item.Since.Date.AddDays(Math.Max(1, Math.Round(days * (fridge ? cold.FridgeFactor : 1)))) : null;
+    }
+
+    /// <summary>Its best-before worked out again (when the fridge or freezer changes), unless it was set by hand or read
+    /// from a photo.</summary>
+    public static PantryItem Refresh(PantryItem item, ColdStorage? cold = null) => item.UseBySet ? item : item with { UseBy = Usual(item, cold) };
+
+    /// <summary>Whether something goes straight in the freezer when it's bought: what's sold frozen, or what a photo
+    /// shows in one.</summary>
+    private static DateTime? FrozenOn(string name, DateTime now, bool inFreezer) =>
+        inFreezer || GroceryCatalog.Get(name) is { Kept: Kept.Freezer } ? now : null;
 
     /// <summary>Something bought (or seen to be new): added to what there is, or new if there was none. A count already
-    /// below zero starts again from zero.</summary>
-    public static PantryItem Add(PantryItem? existing, string name, string quantity, DateTime now, int useWithinDays = 0, bool unsure = false)
+    /// below zero starts again from zero. Its best-before is the one said for it (<paramref name="useWithinDays"/>, from a
+    /// photo), or the usual one from now; what was already frozen stays frozen.</summary>
+    public static PantryItem Add(PantryItem? existing, string name, string quantity, DateTime now, int useWithinDays = 0, bool unsure = false,
+        bool inFreezer = false, ColdStorage? cold = null)
     {
         var (amount, unit) = Amount(name, quantity);
-        var useBy = UseBy(name, now, useWithinDays);
-        if (existing is null || existing.Unit != unit) return new(name, amount, unit, useBy, now, unsure);
-        return existing with { Amount = Math.Max(0, existing.Amount) + amount, UseBy = useBy ?? existing.UseBy, Unsure = existing.Unsure || unsure };
+        var item = existing is null || existing.Unit != unit
+            ? new PantryItem(name, amount, unit, null, now, unsure, now, FrozenOn(name, now, inFreezer))
+            : existing with { Amount = Math.Max(0, existing.Amount) + amount, Unsure = existing.Unsure || unsure, Added = now, Frozen = existing.Frozen ?? FrozenOn(name, now, inFreezer) };
+        return useWithinDays > 0 ? item with { UseBy = now.Date.AddDays(useWithinDays), UseBySet = true } : Refresh(item with { UseBySet = false }, cold);
     }
 
-    /// <summary>Counted: this much there is now.</summary>
-    public static PantryItem Set(string name, string quantity, DateTime now, int useWithinDays = 0, bool unsure = false, PantryItem? existing = null)
+    /// <summary>Counted: this much there is now. When it was put in, whether it's frozen and its best-before stay as they
+    /// were, unless a photo says otherwise.</summary>
+    public static PantryItem Set(string name, string quantity, DateTime now, int useWithinDays = 0, bool unsure = false, PantryItem? existing = null,
+        bool inFreezer = false, ColdStorage? cold = null)
     {
         var (amount, unit) = Amount(name, quantity);
-        return new(name, amount, unit, UseBy(name, now, useWithinDays) is { } by && useWithinDays > 0 ? by : existing?.UseBy ?? UseBy(name, now), now, unsure);
+        var item = existing is null
+            ? new PantryItem(name, amount, unit, null, now, unsure, now, FrozenOn(name, now, inFreezer))
+            : existing with { Amount = amount, Unit = unit, Counted = now, Unsure = unsure, Frozen = existing.Frozen ?? (inFreezer ? now : null) };
+        return useWithinDays > 0 ? item with { UseBy = now.Date.AddDays(useWithinDays), UseBySet = true } : Refresh(item, cold);
     }
+
+    /// <summary>Put in the freezer now: its best-before is from today, for as long as it keeps frozen.</summary>
+    public static PantryItem Freeze(PantryItem item, DateTime now, ColdStorage? cold = null) =>
+        Refresh(item with { Frozen = now, UseBySet = false }, cold);
+
+    /// <summary>Taken out of the freezer to thaw: it keeps from now as it does fresh where it's kept, which for meat and
+    /// fish is a day or two in the fridge.</summary>
+    public static PantryItem Thaw(PantryItem item, DateTime now, ColdStorage? cold = null) =>
+        Refresh(item with { Frozen = null, Added = now, UseBySet = false }, cold);
+
+    /// <summary>A best-before set by hand, kept until it's put back to the usual one, frozen or thawed.</summary>
+    public static PantryItem SetUseBy(PantryItem item, DateTime? useBy) => item with { UseBy = useBy?.Date, UseBySet = true };
+
+    /// <summary>Back to the usual best-before.</summary>
+    public static PantryItem UsualUseBy(PantryItem item, ColdStorage? cold = null) => Refresh(item with { UseBySet = false }, cold);
+
+    /// <summary>"9 months frozen", "doesn't freeze well", for what the stock shows beside something in the freezer.</summary>
+    public static string FreezerNote(string name) => GroceryCatalog.Get(name) switch
+    {
+        { FreezerMonths: 0, Kept: not Kept.Freezer } => "doesn't freeze well",
+        { FreezerMonths: var months } => $"best within {months} month{(months == 1 ? "" : "s")} frozen",
+        null => $"about {FreezerMonthsUnknown} months frozen, as a rule",
+    };
 
     /// <summary>What cooking a recipe leaves of what it used: each ingredient's amount taken from what there is of it.
     /// Ingredients the catalog knows are matched by name; others (from Claude's ideas) by the stock's name in theirs,
@@ -148,11 +257,12 @@ public static partial class Pantry
     public static List<PantryItem> InDoubt(IEnumerable<PantryItem> pantry, DateTime now) =>
         pantry.Where(p => p.Unsure || now - p.Counted > Recount && p.Amount > 0).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
-    /// <summary>What's in the kitchen, for meal ideas: what there's some of, soonest to use first.</summary>
+    /// <summary>What's in the kitchen, for meal ideas: what there's some of, soonest to use first, and what's frozen
+    /// (it needs thawing first).</summary>
     public static List<KitchenFood> Kitchen(IEnumerable<PantryItem> pantry, MeasureSystem system) =>
         pantry.Where(p => p.Amount > 0)
             .OrderBy(p => p.UseBy ?? DateTime.MaxValue)
-            .Select(p => new KitchenFood(p.Name, Show(p, system), p.UseBy))
+            .Select(p => new KitchenFood(p.Name, Show(p, system) + (p.InFreezer ? ", in the freezer" : ""), p.UseBy))
             .ToList();
 
     /// <summary>What there's some of that's best used within <paramref name="withinDays"/> days.</summary>

@@ -77,7 +77,7 @@ public sealed partial class MenuPage : UserControl, IPage
         var now = DateTime.Now;
         var today = DateOnly.FromDateTime(now);
         useSoon = Pantry.UseSoon(PantryLog.Items(), now);
-        UseSoonList.ItemsSource = useSoon.Select(u => $"{u.Name} ({Pantry.Show(u, App.Measures)}): best used by {When(u.UseBy!.Value)}" + (GroceryCatalog.Get(u.Name) is { Freezes: true } ? ", or frozen" : "")).ToList();
+        UseSoonList.ItemsSource = useSoon.Select(u => $"{u.Name} ({Pantry.Show(u, App.Measures)}): best used by {When(u.UseBy!.Value)}" + (GroceryCatalog.Get(u.Name) is { Freezes: true } && !u.InFreezer ? ", or frozen" : "")).ToList();
         UseSoonPanel.Show(useSoon.Count > 0);
 
         // The meals to choose for: what's still to come today, and tomorrow's.

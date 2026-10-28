@@ -38,18 +38,35 @@ internal static class PantryLog
 
     private static PantryItem? Find(string name) => Database.Pantry().FirstOrDefault(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Bought: added to what there is.</summary>
-    public static void Bought(string name, string quantity, int useWithinDays = 0, bool unsure = false)
+    private static ColdStorage Cold => App.Current.Cold;
+
+    /// <summary>Bought: added to what there is; <paramref name="inFreezer"/> when it went straight in the freezer.</summary>
+    public static void Bought(string name, string quantity, int useWithinDays = 0, bool unsure = false, bool inFreezer = false)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
-        Database.Save(Pantry.Add(Find(name), name.Trim(), quantity, DateTime.Now, useWithinDays, unsure));
+        Database.Save(Pantry.Add(Find(name), name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, inFreezer, Cold));
     }
 
     /// <summary>Counted (or seen in a photo of where it's kept): this much there is now.</summary>
-    public static void Counted(string name, string quantity, int useWithinDays = 0, bool unsure = false)
+    public static void Counted(string name, string quantity, int useWithinDays = 0, bool unsure = false, bool inFreezer = false)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
-        Database.Save(Pantry.Set(name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, Find(name)));
+        Database.Save(Pantry.Set(name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, Find(name), inFreezer, Cold));
+    }
+
+    /// <summary>Put in the freezer, or taken out to thaw.</summary>
+    public static void Freezer(PantryItem item, bool inFreezer) =>
+        Database.Save(inFreezer ? Pantry.Freeze(item, DateTime.Now, Cold) : Pantry.Thaw(item, DateTime.Now, Cold));
+
+    /// <summary>A best-before set by hand; null puts it back to the usual one.</summary>
+    public static void UseBy(PantryItem item, DateTime? useBy) =>
+        Database.Save(useBy is null ? Pantry.UsualUseBy(item, Cold) : Pantry.SetUseBy(item, useBy));
+
+    /// <summary>The fridge or freezer changed: the dates worked out from them are worked out again.</summary>
+    public static void Redate()
+    {
+        var cold = Cold;
+        foreach (var item in Database.Pantry().Where(p => !p.UseBySet)) Database.Save(Pantry.Refresh(item, cold));
     }
 
     /// <summary>The count is right as it is.</summary>
@@ -102,6 +119,6 @@ internal static class PantryLog
         if (Database.Pantry().Count > 0) return;
         foreach (var item in Database.InKitchen(DateTime.Now.AddDays(-30)).OrderBy(i => i.Bought))
             if (Pantry.Tracked(item.Name))
-                Database.Save(Pantry.Add(Find(item.Name), item.Name, item.Quantity, item.Bought ?? DateTime.Now) with { Unsure = true });
+                Database.Save(Pantry.Add(Find(item.Name), item.Name, item.Quantity, item.Bought ?? DateTime.Now, cold: Cold) with { Unsure = true });
     }
 }

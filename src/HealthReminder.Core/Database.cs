@@ -12,7 +12,7 @@ public sealed class Database : IDisposable
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
     // refills, and the kitchen's stock. Tables of their own that the
     // CREATE adds.
-    private const int SchemaVersion = 6;
+    private const int SchemaVersion = 7;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -160,6 +160,10 @@ public sealed class Database : IDisposable
         // 6: medication on hand.
         AddColumn("reminder", "stock_count", "REAL");
         AddColumn("reminder", "stock_at", "TEXT");
+        // 7: the freezer, and best-before dates set by hand. The dates kept before are left as they were.
+        AddColumn("pantry", "added", "TEXT");
+        AddColumn("pantry", "frozen", "TEXT");
+        if (AddColumn("pantry", "use_by_set", "INTEGER NOT NULL DEFAULT 0")) Execute("UPDATE pantry SET use_by_set = 1 WHERE use_by IS NOT NULL");
         Execute($"PRAGMA user_version = {SchemaVersion}");
     }
 
@@ -657,12 +661,13 @@ public sealed class Database : IDisposable
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT name, amount, unit, use_by, counted, unsure FROM pantry ORDER BY name COLLATE NOCASE";
+            command.CommandText = "SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set FROM pantry ORDER BY name COLLATE NOCASE";
             using var r = command.ExecuteReader();
             var items = new List<PantryItem>();
+            DateTime? When(int column) => r.IsDBNull(column) ? null : DateTime.Parse(r.GetString(column), CultureInfo.InvariantCulture);
             while (r.Read())
-                items.Add(new(r.GetString(0), r.GetDouble(1), r.GetString(2), r.IsDBNull(3) ? null : DateTime.Parse(r.GetString(3), CultureInfo.InvariantCulture),
-                    DateTime.Parse(r.GetString(4), CultureInfo.InvariantCulture), r.GetInt64(5) != 0));
+                items.Add(new(r.GetString(0), r.GetDouble(1), r.GetString(2), When(3), When(4)!.Value, r.GetInt64(5) != 0,
+                    When(6) ?? default, When(7), r.GetInt64(8) != 0));
             return items;
         }
     }
@@ -672,7 +677,13 @@ public sealed class Database : IDisposable
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure) VALUES ($name, $amount, $unit, $useBy, $counted, $unsure)";
+            command.CommandText = """
+                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set)
+                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet)
+                """;
+            command.Parameters.AddWithValue("$added", item.Added == default ? DBNull.Value : item.Added.ToString("s", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$frozen", item.Frozen is { } frozen ? frozen.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
+            command.Parameters.AddWithValue("$useBySet", item.UseBySet);
             command.Parameters.AddWithValue("$name", item.Name.Trim());
             command.Parameters.AddWithValue("$amount", item.Amount);
             command.Parameters.AddWithValue("$unit", item.Unit);
@@ -765,11 +776,14 @@ public sealed class Database : IDisposable
 
     private static string FormatDue(DateTime due) => due.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
 
-    private void AddColumn(string table, string column, string type)
+    /// <summary>Adds a column if the table doesn't have it; true when it was added.</summary>
+    private bool AddColumn(string table, string column, string type)
     {
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT count(*) FROM pragma_table_info('{table}') WHERE name = '{column}'";
-        if (Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) == 0) Execute($"ALTER TABLE {table} ADD COLUMN {column} {type}");
+        if (Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) != 0) return false;
+        Execute($"ALTER TABLE {table} ADD COLUMN {column} {type}");
+        return true;
     }
 
     private void Execute(string sql)

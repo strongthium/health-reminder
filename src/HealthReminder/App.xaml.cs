@@ -105,6 +105,31 @@ public sealed partial class App : Application
         set => Database.SetSetting("drink_unit", value.ToString());
     }
 
+    /// <summary>How cold the fridge and freezer are: the North American standard, 4 °C (40 °F) and −18 °C (0 °F), until
+    /// set. Setting it works out again the best-before dates that weren't set by hand.</summary>
+    public ColdStorage Cold
+    {
+        get
+        {
+            static double Read(string? text, double standard) =>
+                double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var c) ? c : standard;
+            return new(Read(Database.Setting("fridge_c"), ColdStorage.StandardFridgeC), Read(Database.Setting("freezer_c"), ColdStorage.StandardFreezerC));
+        }
+        set
+        {
+            Database.SetSetting("fridge_c", value.FridgeC.ToString("R", CultureInfo.InvariantCulture));
+            Database.SetSetting("freezer_c", value.FreezerC.ToString("R", CultureInfo.InvariantCulture));
+            PantryLog.Redate();
+        }
+    }
+
+    /// <summary>Whether temperatures are shown in °F: in the U.S. (and the other countries not on metric) until set.</summary>
+    public bool Fahrenheit
+    {
+        get => Database.Setting("temperature") is { } saved ? saved == "F" : !RegionInfo.CurrentRegion.IsMetric;
+        set => Database.SetSetting("temperature", value ? "F" : "C");
+    }
+
     /// <summary>Whether Claude reads grocery photos and suggests meals; off until it's turned on with a key.</summary>
     public bool ClaudeOn
     {

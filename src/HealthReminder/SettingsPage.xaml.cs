@@ -86,6 +86,8 @@ public sealed partial class SettingsPage : UserControl, IPage
         CloseBox.SelectedIndex = (int)app.CloseAction;
         DrinkUnitBox.SelectedIndex = (int)app.DrinkUnit;
         MeasuresBox.SelectedIndex = (int)app.Measures;
+        TemperatureUnitBox.SelectedIndex = app.Fahrenheit ? 1 : 0;
+        ShowCold();
         ShowClaude();
         loading = false;
 
@@ -210,6 +212,48 @@ public sealed partial class SettingsPage : UserControl, IPage
         if (loading || DrinkUnitBox.SelectedIndex < 0) return;
         App.Current.DrinkUnit = (DrinkUnit)DrinkUnitBox.SelectedIndex;
         App.Current.Changed();
+    }
+
+    /// <summary>The fridge and freezer in the unit chosen, to the degree (the standard 4.4 °C shows as 4), and what's wrong
+    /// with them.</summary>
+    private void ShowCold()
+    {
+        var app = App.Current;
+        var cold = app.Cold;
+        double Shown(double c) => Math.Round(app.Fahrenheit ? ColdStorage.ToF(c) : c);
+        FridgeBox.Minimum = app.Fahrenheit ? 14 : -10;
+        FridgeBox.Maximum = app.Fahrenheit ? 68 : 20;
+        FreezerBox.Minimum = -40;    // the same in both
+        FreezerBox.Maximum = app.Fahrenheit ? 68 : 20;
+        FridgeBox.Value = Shown(cold.FridgeC);
+        FreezerBox.Value = Shown(cold.FreezerC);
+        ShowColdWarning(cold);
+    }
+
+    private void ShowColdWarning(ColdStorage cold)
+    {
+        var warnings = cold.Warnings(App.Current.Fahrenheit);
+        ColdWarning.Text = string.Join(" ", warnings);
+        ColdWarning.Show(warnings.Count > 0);
+    }
+
+    private void Cold_Changed(object? sender, EventArgs e)
+    {
+        if (loading || FridgeBox.Value is not { } fridge || FreezerBox.Value is not { } freezer) return;
+        var app = App.Current;
+        var cold = app.Fahrenheit ? new ColdStorage(ColdStorage.FromF(fridge), ColdStorage.FromF(freezer)) : new ColdStorage(fridge, freezer);
+        app.Cold = cold;
+        ShowColdWarning(cold);
+        app.KitchenChanged();
+    }
+
+    private void TemperatureUnit_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (loading || TemperatureUnitBox.SelectedIndex < 0) return;
+        App.Current.Fahrenheit = TemperatureUnitBox.SelectedIndex == 1;
+        loading = true;
+        ShowCold();
+        loading = false;
     }
 
     private void Measures_Changed(object sender, SelectionChangedEventArgs e)

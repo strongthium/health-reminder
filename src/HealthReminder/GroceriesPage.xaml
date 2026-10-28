@@ -221,6 +221,15 @@
                         </Border>
                       </WrapPanel>
                       <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" Foreground="{Binding DetailBrush}" TextWrapping="Wrap" />
+                      <WrapPanel Margin="0,4,0,0">
+                        <CheckBox Content="In the freezer" IsChecked="{Binding InFreezer, Mode=OneWay}" Click="PantryFreezer_Click" VerticalAlignment="Center" Margin="0,0,16,0"
+                                  ToolTip="Put in the freezer today: its best-before is how long it keeps frozen. Unticked, it's taken out to thaw." />
+                        <TextBlock Text="Best before" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <DatePicker SelectedDate="{Binding UseBy, Mode=OneWay}" SelectedDateChanged="PantryDate_Changed" Width="160" Margin="0,0,8,0"
+                                    ToolTip="Worked out from when it was added (or frozen); pick another date to change it" />
+                        <Button Content="Usual date" Click="PantryUsualDate_Click" Padding="10,4" Visibility="{Binding UseBySet, Converter={StaticResource VisibleIf}}"
+                                ToolTip="Back to the date worked out from when it was added or frozen" />
+                      </WrapPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                       <TextBox Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}" Width="120" Margin="0,0,6,0" ToolTip="How much there is now, in any unit: 3, 500 g, half a loaf…" />

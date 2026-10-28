@@ -112,7 +112,8 @@ last price per litre or kilogram.
 
 ![Your kitchen](docs/groceries-kitchen.png)
 
-The cart, and your kitchen: a running stock that the meals you cook take off. What's in doubt is marked **check**.
+Your kitchen: a running stock that the meals you cook take off, each with its best-before (from when it was added,
+or frozen) and whether it's in the freezer. What's in doubt is marked **check**.
 
 <img src="docs/kitchen-check.png" alt="Time to check the kitchen" width="60%">
 
@@ -155,7 +156,8 @@ A sound for each group, getting louder, and how hard a reminder insists.
 
 ![More settings](docs/settings-claude.png)
 
-The camera for video evidence, the units for drinks and groceries, and Help from Claude.
+The camera for video evidence, the units for drinks and groceries, how cold the fridge and freezer are, and Help from
+Claude.
 
 <img src="docs/close.png" alt="Keep reminding you?" width="60%">
 
@@ -381,6 +383,23 @@ the gram; milk by the millilitre), with when it's best used by. The meals cooked
 **Cooked it** in the steps at the side of the screen, or marking the meal eaten when the menu had a recipe for it,
 once a meal either way (Claude's ideas come off by name). The menu's shopping, **Use soon** and Claude's ideas go by
 it.
+
+**Best before.** Each thing's best-before is worked out from when it was added, for as long as it keeps where it's
+kept (chicken breasts 2 days in the fridge, eggs 4 weeks, butter 2 months, bread 6 days on the counter; cans, rice and
+pasta keep). Any of them can be changed with its date picker, and **Usual date** puts it back.
+
+**The freezer.** Tick **In the freezer** and the best-before is from that day, for as long as it's at its best frozen
+at −18 °C (0 °F): 9 months for chicken breasts, 6 for steak, 3 for ground beef, bread and milk, 2 for salmon (from the
+USDA's FoodKeeper). Frozen food stays safe longer than that, but drier and blander. What's sold frozen (vegetables,
+berries, hamburger patties) goes straight in; what a photo shows in the freezer does too. Untick it to thaw it, and it
+keeps from then as it does fresh: a day or two in the fridge for meat. Lettuce, salad greens, cucumbers and potatoes
+don't freeze well, and say so. Claude's meal ideas know what's frozen.
+
+**The fridge and freezer.** In **Settings**, how cold they're set, in °C or °F: 4 °C (40 °F) and −18 °C (0 °F), the
+North American standard, to begin with. Warmer, food keeps less long, and the dates are shortened: roughly half as long
+in the fridge for every 5 °C (9 °F) over 4 °C, as bacteria grow faster, and half as long in the freezer for every 4 °C
+(7 °F) over −18 °C. A warning says so, and when the freezer is too warm to keep food frozen solid. A colder setting
+isn't taken to keep food longer.
 
 Counts drift, so what's in doubt is marked **check**: an amount read from a photo, more used than was counted, or not
 counted for two weeks. Each thing can be counted on the spot (**Set** what there is, **Right**, or **None left**), and

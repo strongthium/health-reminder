@@ -235,6 +235,33 @@
           </ComboBox>
         </Grid>
       </Border>
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE9CA;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+            <TextBlock Text="Fridge and freezer" Style="{StaticResource RowTitle}" />
+            <TextBlock Text="How cold they're set: the kitchen's best-before dates are worked out from it. 4 °C (40 °F) and −18 °C (0 °F) are the standard." Style="{StaticResource Caption}" TextWrapping="Wrap" />
+            <TextBlock x:Name="ColdWarning" Style="{StaticResource Caption}" TextWrapping="Wrap" Foreground="#C25700" Margin="0,4,0,0" Visibility="Collapsed" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+              <TextBlock Text="Fridge" Width="56" VerticalAlignment="Center" />
+              <local:NumberBox x:Name="FridgeBox" Width="110" Minimum="-10" Maximum="20" ValueChanged="Cold_Changed" />
+              <TextBlock Text="Freezer" Width="60" VerticalAlignment="Center" Margin="12,0,0,0" />
+              <local:NumberBox x:Name="FreezerBox" Width="110" Minimum="-40" Maximum="20" ValueChanged="Cold_Changed" />
+            </StackPanel>
+            <ComboBox x:Name="TemperatureUnitBox" Width="120" HorizontalAlignment="Right" SelectionChanged="TemperatureUnit_Changed">
+              <ComboBoxItem Content="°C" />
+              <ComboBoxItem Content="°F" />
+            </ComboBox>
+          </StackPanel>
+        </Grid>
+      </Border>
 
       <!-- Claude -->
       <TextBlock Text="Help from Claude" Style="{StaticResource Section}" />

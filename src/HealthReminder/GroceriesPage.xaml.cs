@@ -56,12 +56,13 @@ public sealed class SeenRow(SeenFood food)
     public string Quantity { get; set; } = food.Quantity;
     public int UseWithinDays => food.UseWithinDays;
     public bool Unsure => food.Confidence == "likely";
+    public bool InFreezer => food.Where.Contains("freezer", StringComparison.OrdinalIgnoreCase);
     public string Detail => $"{food.Where}" + (food.UseWithinDays > 0 ? $", good for about {food.UseWithinDays} days" : ", keeps")
         + (Unsure ? " · not sure what it is" : "");
 }
 
-/// <summary>Something in the kitchen's stock: how much, when it's best used by, and whether it's in doubt; with a box
-/// to type what there is when it's counted.</summary>
+/// <summary>Something in the kitchen's stock: how much, when it's best used by, whether it's in the freezer and whether
+/// it's in doubt; with a box to type what there is when it's counted.</summary>
 public sealed class PantryRow(PantryItem item, MeasureSystem system, DateTime now)
 {
     private static readonly System.Windows.Media.Brush Soon = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC2, 0x57, 0x00));
@@ -70,10 +71,19 @@ public sealed class PantryRow(PantryItem item, MeasureSystem system, DateTime no
     public string Shown => Pantry.Show(item, system);
     public bool InDoubt => item.Unsure || now - item.Counted > Pantry.Recount && item.Amount > 0;
     public string Count { get; set; } = "";
-    public string Detail => (item.UseBy is { } by
+    public bool InFreezer => item.InFreezer;
+    public DateTime? UseBy => item.UseBy;
+    public bool UseBySet => item.UseBySet;
+    public string Detail => string.Join(" · ", new[]
+    {
+        item.UseBy is { } by
             ? by.Date < now.Date ? $"was best by {by:ddd MMM d}" : by.Date <= now.Date.AddDays(2) ? $"use by {by:dddd}" : $"good until about {by:MMM d}"
-            : "keeps")
-        + $" · counted {item.Counted:MMM d}" + (item.Unsure ? " · the amount is a guess" : "");
+            : "keeps",
+        item.Frozen is { } frozen ? $"frozen {frozen:MMM d}, {Pantry.FreezerNote(item.Name)}" : $"added {item.Since:MMM d}",
+        item.UseBySet ? "its own date" : "",
+        $"counted {item.Counted:MMM d}",
+        item.Unsure ? "the amount is a guess" : "",
+    }.Where(p => p.Length > 0));
     // Not null: a null brush draws the text in nothing.
     public System.Windows.Media.Brush DetailBrush => item.UseBy is { } by && by.Date <= now.Date.AddDays(2) ? Soon
         : (System.Windows.Media.Brush)Application.Current.FindResource("TextFillColorSecondaryBrush");
@@ -171,7 +181,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void FoundToKitchen_Click(object sender, RoutedEventArgs e)
     {
         foreach (var row in found.Where(f => f.Keep && f.Name.Trim().Length > 0))
-            PantryLog.Counted(row.Name, row.Quantity, row.UseWithinDays, unsure: true);
+            PantryLog.Counted(row.Name, row.Quantity, row.UseWithinDays, unsure: true, row.InFreezer);
         CloseFound($"Your kitchen has {found.Count(f => f.Keep)} counted from the photos.");
     }
 
@@ -179,7 +189,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void FoundBought_Click(object sender, RoutedEventArgs e)
     {
         foreach (var row in found.Where(f => f.Keep && f.Name.Trim().Length > 0))
-            PantryLog.Bought(row.Name, row.Quantity, row.UseWithinDays, row.Unsure);
+            PantryLog.Bought(row.Name, row.Quantity, row.UseWithinDays, row.Unsure, row.InFreezer);
         CloseFound($"Added {found.Count(f => f.Keep)} to your kitchen.");
     }
 
@@ -218,6 +228,31 @@ public sealed partial class GroceriesPage : UserControl, IPage
         if (PantryRowOf(sender) is not { } row) return;
         PantryLog.Confirmed(row.Item);
         Refresh();
+    }
+
+    private void PantryFreezer_Click(object sender, RoutedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row || sender is not CheckBox box) return;
+        PantryLog.Freezer(row.Item, box.IsChecked == true);
+        Refresh();
+        App.KitchenChanged();
+    }
+
+    /// <summary>A best-before picked by hand. The date shown when the list is drawn raises this too, and is ignored.</summary>
+    private void PantryDate_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row || sender is not DatePicker picker || picker.SelectedDate?.Date == row.Item.UseBy?.Date) return;
+        PantryLog.UseBy(row.Item, picker.SelectedDate);
+        Dispatcher.InvokeAsync(Refresh);
+        App.KitchenChanged();
+    }
+
+    private void PantryUsualDate_Click(object sender, RoutedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row) return;
+        PantryLog.UseBy(row.Item, null);
+        Refresh();
+        App.KitchenChanged();
     }
 
     private void PantryGone_Click(object sender, RoutedEventArgs e)
