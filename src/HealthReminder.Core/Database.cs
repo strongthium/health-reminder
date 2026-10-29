@@ -11,9 +11,9 @@ public sealed class Database : IDisposable
 {
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
     // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs; 10: Claude's ideas picked for
-    // a meal; 11: food eaten, logged by hand; 12: the stock by id, so that two bags of a thing can be kept apart. Tables
-    // of their own that the CREATE adds.
-    private const int SchemaVersion = 12;
+    // a meal; 11: food eaten, logged by hand; 12: the stock by id, so that two bags of a thing can be kept apart; 13: what's
+    // been in the kitchen, kept to buy again, and the brand to buy on the list. Tables of their own that the CREATE adds.
+    private const int SchemaVersion = 13;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -103,7 +103,8 @@ public sealed class Database : IDisposable
                 added    TEXT NOT NULL,
                 cleared  INTEGER NOT NULL DEFAULT 0, -- bought on an earlier trip
                 used     TEXT,                       -- when it was used up
-                use_by   TEXT                        -- when it's best used by, if it was said (from a photo)
+                use_by   TEXT,                       -- when it's best used by, if it was said (from a photo)
+                note     TEXT                        -- the brand to buy, if one was said
             );
             CREATE TABLE IF NOT EXISTS smoke (
                 id       INTEGER PRIMARY KEY,
@@ -176,6 +177,18 @@ public sealed class Database : IDisposable
                 meal   TEXT                        -- the meal it was had in place of: its Dose.Key
             );
             CREATE INDEX IF NOT EXISTS food_log_at ON food_log (at);
+            CREATE TABLE IF NOT EXISTS stocked (
+                name      TEXT NOT NULL COLLATE NOCASE,
+                note      TEXT NOT NULL DEFAULT '' COLLATE NOCASE,  -- the brand; '' for none
+                quantity  TEXT NOT NULL DEFAULT '',  -- how much came in the last time it was bought, as typed
+                icon TEXT, color TEXT, food_group TEXT, place INTEGER,
+                pack_word TEXT, size REAL, size_unit TEXT, size_of TEXT, per_pack REAL,
+                bought    INTEGER NOT NULL DEFAULT 0,  -- how many times it came in
+                first     TEXT NOT NULL,
+                last      TEXT NOT NULL,
+                forgotten INTEGER NOT NULL DEFAULT 0,  -- taken out of the history, until it's bought again
+                PRIMARY KEY (name, note)
+            );
             """);
         // 1 to 2: the DIN and the prescription number.
         if (version == 1) Execute("ALTER TABLE reminder ADD COLUMN din TEXT NOT NULL DEFAULT ''; ALTER TABLE reminder ADD COLUMN rx_number TEXT NOT NULL DEFAULT '';");
@@ -224,6 +237,23 @@ public sealed class Database : IDisposable
                 """);
         }
         AddColumn("food_log", "pantry_id", "INTEGER");
+        // 13: the brand to buy; and what's been in the kitchen, from what's there and what was bought off the list.
+        AddColumn("grocery", "note", "TEXT");
+        if (version < 13)
+            Execute("""
+                BEGIN;
+                INSERT OR IGNORE INTO stocked (name, note, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, first, last)
+                    SELECT name, coalesce(note, ''), icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack,
+                           coalesce(added, counted), coalesce(added, counted)
+                    FROM pantry ORDER BY id;
+                INSERT INTO stocked (name, note, quantity, bought, first, last)
+                    SELECT g.name, '', (SELECT l.quantity FROM grocery l WHERE l.name = g.name COLLATE NOCASE AND l.bought IS NOT NULL ORDER BY l.bought DESC LIMIT 1),
+                           count(*), min(g.bought), max(g.bought)
+                    FROM grocery g WHERE g.bought IS NOT NULL GROUP BY g.name COLLATE NOCASE
+                    ON CONFLICT (name, note) DO UPDATE SET quantity = excluded.quantity, bought = excluded.bought,
+                        first = min(first, excluded.first), last = max(last, excluded.last);
+                COMMIT;
+                """);
         if (Convert.ToInt64(Scalar("SELECT count(*) FROM place"), CultureInfo.InvariantCulture) == 0)
             foreach (var place in KitchenPlace.Defaults) Save(place);
         Execute($"PRAGMA user_version = {SchemaVersion}");
@@ -476,6 +506,7 @@ public sealed class Database : IDisposable
                     Cleared = (long)r["cleared"] != 0,
                     Used = Time("used"),
                     UseBy = Time("use_by"),
+                    Note = r["note"] as string,
                 });
             return list;
         }
@@ -487,10 +518,11 @@ public sealed class Database : IDisposable
         {
             using var command = connection.CreateCommand();
             command.CommandText = item.Id == 0
-                ? "INSERT INTO grocery (name, quantity, price, bought, added, cleared, used, use_by) VALUES ($name, $quantity, $price, $bought, $added, $cleared, $used, $useBy) RETURNING id"
-                : "UPDATE grocery SET name = $name, quantity = $quantity, price = $price, bought = $bought, cleared = $cleared, used = $used, use_by = $useBy WHERE id = $id RETURNING id";
+                ? "INSERT INTO grocery (name, quantity, price, bought, added, cleared, used, use_by, note) VALUES ($name, $quantity, $price, $bought, $added, $cleared, $used, $useBy, $note) RETURNING id"
+                : "UPDATE grocery SET name = $name, quantity = $quantity, price = $price, bought = $bought, cleared = $cleared, used = $used, use_by = $useBy, note = $note WHERE id = $id RETURNING id";
             var p = command.Parameters;
             p.AddWithValue("$id", item.Id);
+            p.AddWithValue("$note", item.Note?.Trim() is { Length: > 0 } note ? note : DBNull.Value);
             p.AddWithValue("$name", item.Name.Trim());
             p.AddWithValue("$quantity", item.Quantity.Trim());
             p.AddWithValue("$price", item.Price is { } price ? price.ToString(CultureInfo.InvariantCulture) : DBNull.Value);
@@ -822,7 +854,100 @@ public sealed class Database : IDisposable
             command.Parameters.AddWithValue("$useBy", item.UseBy is { } by ? by.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
             command.Parameters.AddWithValue("$counted", item.Counted.ToString("s", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$unsure", item.Unsure);
-            return item with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
+            var saved = item with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
+            Stock(saved, "", null);
+            return saved;
+        }
+    }
+
+    /// <summary>Something put in the kitchen as bought: how much came, and when, kept to buy it again.</summary>
+    public void Bought(PantryItem item, string quantity, DateTime at)
+    {
+        lock (gate) Stock(item, quantity, at);
+    }
+
+    /// <summary>
+    /// What's kept of something that's been in the kitchen, by its name and brand: how it's kept (its look, as it is
+    /// now), and, when it was bought (<paramref name="boughtAt"/>), how much came and when, one time more; bought, it's
+    /// back in the history if it was taken out.
+    /// </summary>
+    private void Stock(PantryItem item, string quantity, DateTime? boughtAt)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO stocked (name, note, quantity, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, bought, first, last)
+            VALUES ($name, $note, $quantity, $icon, $color, $group, $place, $packWord, $size, $sizeUnit, $sizeOf, $perPack, $bought, $at, $at)
+            ON CONFLICT (name, note) DO UPDATE SET
+                icon = excluded.icon, color = excluded.color, food_group = excluded.food_group, place = excluded.place,
+                pack_word = excluded.pack_word, size = excluded.size, size_unit = excluded.size_unit, size_of = excluded.size_of,
+                per_pack = excluded.per_pack,
+                quantity = CASE WHEN $bought = 1 AND excluded.quantity <> '' THEN excluded.quantity ELSE quantity END,
+                bought = bought + $bought,
+                last = CASE WHEN $bought = 1 THEN excluded.last ELSE last END,
+                forgotten = CASE WHEN $bought = 1 THEN 0 ELSE forgotten END
+            """;
+        object Or(object? value) => value ?? DBNull.Value;
+        var p = command.Parameters;
+        var packing = item.Packing;
+        p.AddWithValue("$name", item.Name.Trim());
+        p.AddWithValue("$note", item.Note?.Trim() ?? "");
+        p.AddWithValue("$quantity", quantity.Trim());
+        p.AddWithValue("$icon", Or(item.Icon));
+        p.AddWithValue("$color", Or(item.Color));
+        p.AddWithValue("$group", Or(item.Group?.ToString()));
+        p.AddWithValue("$place", Or(item.Place));
+        p.AddWithValue("$packWord", Or(packing?.Word));
+        p.AddWithValue("$size", Or(packing?.Size));
+        p.AddWithValue("$sizeUnit", Or(packing is null ? null : packing.Volume ? "mL" : "g"));
+        p.AddWithValue("$sizeOf", Or(packing is null ? null : packing.OfPack ? "pack" : "each"));
+        p.AddWithValue("$perPack", Or(packing?.PerPack));
+        p.AddWithValue("$bought", boughtAt is null ? 0 : 1);
+        p.AddWithValue("$at", (boughtAt ?? item.Since).ToString("s", CultureInfo.InvariantCulture));
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>What's been in the kitchen and isn't taken out of the history, by name and brand.</summary>
+    public List<StockedThing> Stocked() => ReadStocked("WHERE forgotten = 0 ORDER BY name, note");
+
+    /// <summary>What there's been of a name, taken out of the history or not, the one last bought first.</summary>
+    public List<StockedThing> StockedNamed(string name) =>
+        ReadStocked("WHERE name = $name ORDER BY last DESC", ("$name", name.Trim()));
+
+    /// <summary>Taken out of the history, until it's bought again.</summary>
+    public void Forget(StockedThing thing)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE stocked SET forgotten = 1 WHERE name = $name AND note = $note";
+            command.Parameters.AddWithValue("$name", thing.Name);
+            command.Parameters.AddWithValue("$note", thing.Note);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private List<StockedThing> ReadStocked(string where, params (string Name, object Value)[] parameters)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT name, note, quantity, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, bought, first, last FROM stocked " + where;
+            foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
+            using var r = command.ExecuteReader();
+            var things = new List<StockedThing>();
+            string? Text(int column) => r.IsDBNull(column) ? null : r.GetString(column);
+            double? Number(int column) => r.IsDBNull(column) ? null : r.GetDouble(column);
+            DateTime When(int column) => DateTime.Parse(r.GetString(column), CultureInfo.InvariantCulture);
+            while (r.Read())
+            {
+                var packing = new Packing(null, Text(7) ?? "pack", Number(8), Text(9) == "mL", Text(10) == "pack", Number(11));
+                var like = new PantryItem(r.GetString(0), 0, "", null, When(14), false, Added: When(13),
+                    Place: r.IsDBNull(6) ? null : r.GetInt64(6), Icon: Text(3), Color: Text(4),
+                    Group: Enum.TryParse<FoodGroup>(Text(5), out var group) ? group : null,
+                    Note: r.GetString(1) is { Length: > 0 } note ? note : null, Packing: packing.IsEmpty ? null : packing);
+                things.Add(new StockedThing(like, r.GetString(2), r.GetInt32(12), When(13), When(14)));
+            }
+            return things;
         }
     }
 

@@ -22,6 +22,9 @@ public sealed class GroceryItem
     /// <summary>When it's best used by, when that was said (read from a photo); otherwise the catalog knows.</summary>
     public DateTime? UseBy { get; set; }
 
+    /// <summary>Which one to buy: a brand ("Tilda"), as the kitchen keeps it; null for any.</summary>
+    public string? Note { get; set; }
+
     public Quantity? Amount => Quantities.Parse(Quantity);
 
     /// <summary>"1.89 L", "2 lb"; a count, or what isn't an amount, as typed ("2 loaves"); "" without one.</summary>
@@ -35,4 +38,16 @@ public sealed class GroceryItem
         var unit = Quantities.PriceUnit(amount.Dimension, system).Label;
         return each.ToString("C", culture) + (amount.Dimension == Dimension.Count ? " each" : "/" + unit);
     }
+}
+
+/// <summary>
+/// Something that's been in the kitchen, kept after it's used up, to buy again: <paramref name="Like"/> is how it was
+/// kept (its name and brand, picture, colour, group, place and what one weighs; no amount), <paramref name="Quantity"/>
+/// how much came in the last time it was bought ("900 g"; "" when that isn't known), <paramref name="Bought"/> how many
+/// times it came in, from <paramref name="First"/> to <paramref name="Last"/>.
+/// </summary>
+public sealed record StockedThing(PantryItem Like, string Quantity, int Bought, DateTime First, DateTime Last)
+{
+    public string Name => Like.Name;
+    public string Note => Like.Note ?? "";
 }

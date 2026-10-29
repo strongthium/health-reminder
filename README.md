@@ -121,7 +121,8 @@ Your kitchen: a running stock that the meals you cook take off, by where it's ke
 its picture, its brand, how much and its best-before. What's in doubt has a badge on its picture. A click on a line opens
 it, to change its name, brand, packs, place, group and dates there, or to take off some eaten (which goes in the food
 log) or thrown out. **Search** finds things on the list and in the
-kitchen, and something new put away by hand asks where it goes.
+kitchen, and something new put away by hand asks where it goes. **Bought before** keeps what's been in the kitchen after
+it's used up, to put the same thing back on the list.
 
 <img src="docs/kitchen-picture.png" alt="Picking a thing's picture by kind, and its colour" width="60%">
 
@@ -404,7 +405,13 @@ cart, **Got it** takes the amount bought and, if you like, its price; the list t
 kilogram (or gallon or pound, or each), and next time the same thing is on the list, what it cost last time.
 **Done shopping** clears what's been bought; its prices are kept.
 
-**Search** at the top shows only what matches, on the list, in the cart and in the kitchen, every place opened: a name
+**Bought before** keeps everything that's been in the kitchen, by name and brand, after it's used up and taken off:
+how much came the last time and what it cost, how many times it's been bought, and how much of it there is now. It
+shows what's run out (**Show all** shows the rest), each with **Add to list**, which puts the same one back on the list,
+its brand and as much as last time; bought, it's put away the way it was kept, with its picture and what one weighs.
+The **✕** takes something out of it until it's bought again.
+
+**Search** at the top shows only what matches, on the list, in the cart, bought before and in the kitchen, every place opened: a name
 or a brand ("pep" finds Pepsi and red peppers, "diet pep" just Diet Pepsi), or the start of the kind of food it is
 ("pasta" finds the spaghetti and the rotini, "meat" what's in meat and fish). **Esc** or the **✕** shows everything
 again.
@@ -444,8 +451,10 @@ takes from the bag that's best used first, then the next.
 **Some used.** An opened line takes off a portion as it's used: type how much under **Used some** (a serving is filled
 in: 60 g of rice, 1 egg; 1 of what's weighed is a serving) and press **Ate it**, which puts it in today's food log with
 about its calories, or **Threw it out**, which doesn't. The line says what's left. Taken out of the food log, what was
-eaten goes back. What was eaten before it was in the app, or what's left after some went bad, is typed in **How much
-is left**.
+eaten goes back. A weight of something counted (50 g of a bag of chips) comes off by what one weighs: a piece, or a
+whole pack when that's what's counted (**Weighs or holds**, with **a pack**), or roughly a usual one (an egg, a slice);
+when that isn't known, it asks rather than taking off nothing. What was eaten before it was in the app, or what's left
+after some went bad, is typed in **How much is left**.
 
 **Places**
 adds more and names them (a **Deep freezer** beside the fridge's freezer, a **Garage fridge**), orders them, and

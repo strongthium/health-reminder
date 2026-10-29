@@ -49,11 +49,27 @@ internal static class PantryLog
     public static void Bought(string name, string quantity, int useWithinDays = 0, bool unsure = false, bool inFreezer = false)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
-        Database.Save(Pantry.Add(Find(name), name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, inFreezer, Cold));
+        var now = DateTime.Now;
+        var existing = Find(name);
+        var item = Pantry.Add(existing, name.Trim(), quantity, now, useWithinDays, unsure, inFreezer, Cold);
+        Database.Bought(Database.Save(existing is null ? Pantry.Like(item, Database.StockedNamed(name), null) : item), quantity, now);
     }
 
-    /// <summary>Something new as it would go in, where its name says, to ask where it goes.</summary>
-    public static PantryItem New(string name, string quantity) => Pantry.Add(null, name.Trim(), quantity, DateTime.Now, cold: Cold);
+    /// <summary>Something new as it would go in, where its name says, and kept as it was before, to ask where it goes.</summary>
+    public static PantryItem New(string name, string quantity, string? note = null) =>
+        Pantry.Like(Pantry.Add(null, name.Trim(), quantity, DateTime.Now, cold: Cold), Database.StockedNamed(name), note);
+
+    /// <summary>Bought off the list, but not kept track of in the kitchen (paper towels): kept to buy again.</summary>
+    public static void BoughtOther(string name, string? note, string quantity)
+    {
+        var now = DateTime.Now;
+        Database.Bought(new PantryItem(name.Trim(), 0, "", null, now, false, now, Note: note), quantity, now);
+    }
+
+    /// <summary>What's been in the kitchen, to buy again.</summary>
+    public static List<StockedThing> History() => Database.Stocked();
+
+    public static void Forget(StockedThing thing) => Database.Forget(thing);
 
     private static string PutKey(string name) => "put:" + name.Trim().ToLowerInvariant();
 
@@ -72,10 +88,12 @@ internal static class PantryLog
     /// <summary>
     /// Bought by hand and put away: added to <paramref name="into"/>, some of it there already; or else a thing of its
     /// own, beside any of its name, in a place picked for it (frozen in a freezer, thawed out of one) and shown with a
-    /// group. How it was put away is kept for next time; <paramref name="apart"/> says, when some was there, whether it
-    /// was kept apart.
+    /// group, kept the way it was before (its brand, <paramref name="note"/>, its picture and what one weighs). How it
+    /// was put away is kept for next time; <paramref name="apart"/> says, when some was there, whether it was kept
+    /// apart. Either way it's kept as bought, to buy again.
     /// </summary>
-    public static void PutAway(string name, string quantity, KitchenPlace place, FoodGroup group, PantryItem? into = null, bool? apart = null)
+    public static void PutAway(string name, string quantity, KitchenPlace place, FoodGroup group, PantryItem? into = null, bool? apart = null,
+        string? note = null)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
         var before = PutBefore(name);
@@ -84,11 +102,11 @@ internal static class PantryLog
         var now = DateTime.Now;
         if (into is not null)
         {
-            Database.Save(Pantry.Add(into, name.Trim(), quantity, now, cold: Cold));
+            Database.Bought(Database.Save(Pantry.Add(into, name.Trim(), quantity, now, cold: Cold)), quantity, now);
             return;
         }
-        var item = Pantry.Move(Pantry.Add(null, name.Trim(), quantity, now, cold: Cold), place, now, Cold);
-        Database.Save(item with { Group = group == item.Guess.Group ? null : group });
+        var item = Pantry.Move(New(name, quantity, note), place, now, Cold);
+        Database.Bought(Database.Save(item with { Group = group == item.Guess.Group ? null : group }), quantity, now);
     }
 
     /// <summary>Counted (or seen in a photo of where it's kept): this much there is now.</summary>

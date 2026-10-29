@@ -52,15 +52,46 @@ public sealed class StatsAndFoodTests : IDisposable
     }
 
     [Fact]
+    public void AWeightOfWhatsCountedComesOffByWhatOneWeighs()
+    {
+        // A bag of chips counted, a 200 g bag: 50 g is a quarter of it.
+        var chips = Item("Chips", "1", new Packing(1, "bag", 200, OfPack: true));
+        var some = Calories.Eat(chips, "50 g");
+        Assert.Equal((0.25, true, false), (some.Used, some.Read, some.Guess));
+        Assert.Equal(0.75, Calories.Left(chips, some).Amount);
+        Assert.False(Calories.Left(chips, some).Unsure);
+
+        // With no weight set, a usual one of what's counted in pieces (an egg about 50 g, from its kcal): it comes off,
+        // and it's marked to count.
+        var eggs = Item("Eggs", "12");
+        var portion = Calories.Eat(eggs, "100 g");
+        Assert.Equal((145, true, true), (portion.Kcal, portion.Read, portion.Guess));
+        Assert.Equal(2, portion.Used, 1);
+        var left = Calories.Left(eggs, portion);
+        Assert.Equal(10, left.Amount, 1);
+        Assert.True(left.Unsure);
+
+        // Bread is kept in slices: 60 g is about 2.
+        Assert.Equal(2, Calories.Eat(Item("Bread", "1 loaf"), "60 g").Used, 0);
+        // Counted with no word for what (1 sourdough bread is a loaf, not a usual slice): it can't be told without what
+        // one weighs.
+        var bread = Item("Sourdough bread", "1 loaf");
+        Assert.False(Calories.Eat(bread, "60 g").Read);
+        Assert.False(Calories.Eat(Item("Blueberry muffins", "6"), "50 g").Read);
+        Assert.Equal(0.1, Calories.Eat(bread with { Packing = new Packing(1, "loaf", 600, OfPack: true) }, "60 g").Used, 6);
+    }
+
+    [Fact]
     public void WhatCantBeToldIsLeftInDoubt()
     {
-        // A weight of something counted, with no weight for a piece: the kcal are known, what comes off isn't.
-        var muffins = Item("Blueberry muffins", "6");
-        var portion = Calories.Eat(muffins, "50 g");
-        Assert.Equal((190, 0.0, false), (portion.Kcal, portion.Used, portion.Read));
-        var left = Calories.Left(muffins, portion);
-        Assert.Equal(6, left.Amount);
-        Assert.True(left.Unsure);
+        // A weight of something counted, nothing known of what one weighs: the kcal aren't known, and nothing comes off.
+        var tins = Item("Mystery tin", "2");
+        var portion = Calories.Eat(tins, "150 g");
+        Assert.Equal((0, 0.0, false), (portion.Kcal, portion.Used, portion.Read));
+        Assert.True(Calories.Left(tins, portion).Unsure);
+        // Used up, that's asked about rather than taken off as nothing.
+        Assert.Null(Pantry.Use(tins, "150 g", out var problem));
+        Assert.StartsWith("What one weighs isn't known, so 150 g of it can't be taken off", problem);
         // More eaten than there was.
         Assert.True(Calories.Left(Item("Eggs", "2"), Calories.Eat(Item("Eggs", "2"), "3")).Unsure);
     }

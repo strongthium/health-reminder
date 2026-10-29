@@ -134,7 +134,9 @@
                       <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                      <TextBlock FontSize="15" TextWrapping="Wrap">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="{Binding NoteShown, Mode=OneWay}" FontStyle="Italic" />
+                      </TextBlock>
                       <TextBlock Text="{Binding Shown}" Style="{StaticResource Muted}" Visibility="{Binding Shown, Converter={StaticResource VisibleIfText}}" />
                       <TextBlock Text="{Binding LastText}" Style="{StaticResource Caption}" Visibility="{Binding LastText, Converter={StaticResource VisibleIfText}}" />
                     </StackPanel>
@@ -198,7 +200,9 @@
                     <TextBlock Text="&#xE73E;" Style="{StaticResource Icon}" FontSize="15" Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                                VerticalAlignment="Center" Margin="0,0,14,0" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      <TextBlock TextWrapping="Wrap">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="{Binding NoteShown, Mode=OneWay}" FontStyle="Italic" />
+                      </TextBlock>
                       <TextBlock Text="{Binding BoughtText}" Style="{StaticResource Caption}" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="12,0">
@@ -214,7 +218,66 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </StackPanel>
-  
+
+        <!-- Bought before: what's been in the kitchen, to buy the same again; what's run out first. -->
+        <StackPanel x:Name="HistoryPanel">
+          <Grid Margin="2,20,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Bought before" Style="{StaticResource Heading}" FontSize="15" />
+            <TextBlock x:Name="HistorySummary" Grid.Column="1" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+            <Button x:Name="HistoryAllButton" Grid.Column="2" Style="{StaticResource Bare}" Click="HistoryAll_Click" Padding="6,0" BorderThickness="0" VerticalAlignment="Bottom">
+              <TextBlock x:Name="HistoryAllText" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+            </Button>
+          </Grid>
+          <Border x:Name="HistoryCard" Style="{StaticResource Card}" Padding="10,6,10,8">
+            <ItemsControl x:Name="HistoryList" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:StockedRow}">
+                  <Border x:Name="Back" CornerRadius="6" Padding="4,3" Background="Transparent">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <local:FoodView Icon="{Binding Icon}" Tint="{Binding Tint}" Width="36" Height="36" />
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,8,0">
+                        <TextBlock TextTrimming="CharacterEllipsis" FontSize="14">
+                          <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="{Binding NoteShown, Mode=OneWay}" FontStyle="Italic" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding HaveText}" Foreground="{Binding HaveBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Click="HistoryAdd_Click" Padding="10,5" Margin="0,0,4,0" Visibility="{Binding CanList, Converter={StaticResource VisibleIf}}"
+                                ToolTip="Put it on the list: the same one, as much as the last time">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Add to list" />
+                          </StackPanel>
+                        </Button>
+                        <Button Click="HistoryForget_Click" Padding="9,6" MinWidth="0" ToolTip="Take it out of this history (it comes back when it's bought again)">
+                          <TextBlock Text="&#xE711;" Style="{StaticResource Icon}" FontSize="12" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <Trigger SourceName="Back" Property="IsMouseOver" Value="True">
+                      <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                    </Trigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </StackPanel>
+
         <!-- In the kitchen: the stock, by the place it's kept and then by its group, a line each. -->
         <StackPanel x:Name="KitchenPanel">
           <Grid x:Name="KitchenHeader" Margin="2,20,0,8" SizeChanged="KitchenHeader_SizeChanged">

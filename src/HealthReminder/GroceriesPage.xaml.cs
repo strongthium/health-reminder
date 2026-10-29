@@ -11,6 +11,8 @@ public sealed class GroceryRow(GroceryItem item, GroceryItem? last, MeasureSyste
 {
     public GroceryItem Item => item;
     public string Name => item.Name;
+    /// <summary>The brand to buy, after its name: "  Tilda".</summary>
+    public string NoteShown => item.Note is { Length: > 0 } note ? "  " + note : "";
     /// <summary>The amount in the units everything is shown in: "3.79 L" for "1 gallon". As typed, it's in the box.</summary>
     public string Shown => item.Show(system);
     public string LastText => last is { Price: { } price }
@@ -46,6 +48,48 @@ public sealed class GroceryRow(GroceryItem item, GroceryItem? last, MeasureSyste
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>
+/// Something that's been in the kitchen, on a line to buy it again: its picture, name and brand, how much came the last
+/// time and what it cost, how often it's been bought, and how much of it there is now ("none left" stands out).
+/// </summary>
+public sealed class StockedRow(StockedThing thing, List<PantryItem> have, GroceryItem? last, bool listed, MeasureSystem system)
+{
+    private static readonly System.Windows.Media.Brush Out = KindLook.Brush(System.Windows.Media.Color.FromRgb(0xC2, 0x57, 0x00));
+
+    public StockedThing Thing => thing;
+    public string Icon => thing.Like.ShownIcon;
+    public string? Tint => thing.Like.ShownColor;
+    public string Name => thing.Name;
+    public string NoteShown => thing.Note.Length > 0 ? "  " + thing.Note : "";
+    public bool None => have.Sum(p => Math.Max(0, p.Amount)) <= 0;
+    public bool Listed => listed;
+    public bool CanList => !listed;
+
+    /// <summary>"900 g · bought 4 times, last Oct 12 · $3.49".</summary>
+    public string Detail => string.Join(" · ", new[]
+    {
+        thing.Quantity.Length > 0 ? new GroceryItem { Quantity = thing.Quantity }.Show(system) : "",
+        thing.Bought switch
+        {
+            0 => $"first had {thing.First:MMM d}",
+            1 => $"bought {thing.Last:MMM d}",
+            var n => $"bought {n} times, last {thing.Last:MMM d}",
+        },
+        last?.Price is { } price ? price.ToString("C", CultureInfo.CurrentCulture) + (last.Show(system) is { Length: > 0 } amount ? $" for {amount}" : "") : "",
+    }.Where(p => p.Length > 0));
+
+    /// <summary>"none left", "on the list", "have 1.2 lb".</summary>
+    public string HaveText => listed ? "on the list"
+        : None ? "none left"
+        : "have " + (have.Count == 1 || have.All(p => p.Unit == have[0].Unit)
+            ? Pantry.Show(have[0] with { Amount = have.Sum(p => Math.Max(0, p.Amount)) }, system)
+            : string.Join(" + ", have.Select(p => Pantry.Show(p, system))));
+
+    // Not null: a null brush draws the text in nothing.
+    public System.Windows.Media.Brush HaveBrush => None && !listed ? Out
+        : (System.Windows.Media.Brush)Application.Current.FindResource("TextFillColorSecondaryBrush");
 }
 
 /// <summary>A food Claude saw in a photo, to keep or not, its name and amount fixable.</summary>
@@ -347,10 +391,11 @@ public sealed partial class GroceriesPage : UserControl, IPage
         ShowQuantityHint();
 
         ShowKitchen(system);
+        ShowHistory(system, toBuyAll);
         ShowCheckTime();
         ClearSearch.Show(Searching);
-        NoMatch.Show(Searching && toBuy.Count + bought.Count + kitchenShown == 0);
-        NoMatchText.Text = $"Nothing on the list or in the kitchen matches “{SearchBox.Text.Trim()}”. To add it, type it under What.";
+        NoMatch.Show(Searching && toBuy.Count + bought.Count + kitchenShown + historyShown == 0);
+        NoMatchText.Text = $"Nothing on the list, bought before or in the kitchen matches “{SearchBox.Text.Trim()}”. To add it, type it under What.";
         PhotosButton.IsEnabled = App.ClaudeOn && !reading;
         if (!reading && !FoundPanel.IsVisible)
             PhotosText.Text = App.ClaudeOn
@@ -405,6 +450,65 @@ public sealed partial class GroceriesPage : UserControl, IPage
     {
         SearchBox.Text = "";
         SearchBox.Focus();
+    }
+
+    // ---- Bought before ------------------------------------------------------------------------------------------
+
+    private int historyShown;
+    /// <summary>All that's been bought before is shown, not just what's run out.</summary>
+    private bool historyAll;
+
+    /// <summary>What's been in the kitchen, to buy again: what's run out, or all of it (what's run out first, then the
+    /// rest by name, and what's on the list already last); searching, all that matches.</summary>
+    private void ShowHistory(MeasureSystem system, List<GroceryItem> toBuy)
+    {
+        var all = PantryLog.History();
+        var kitchen = PantryLog.Items();
+        static bool Same(string? a, string? b) => string.Equals(a?.Trim() ?? "", b?.Trim() ?? "", StringComparison.OrdinalIgnoreCase);
+        var shown = all.Where(t => Matches(t.Name, t.Note, t.Like.ShownGroup, t.Like.ShownIcon))
+            .Select(t => new StockedRow(t,
+                kitchen.Where(p => Same(p.Name, t.Name) && (t.Note.Length == 0 || Same(p.Note, t.Note))).ToList(),
+                App.Database.LastBought(t.Name),
+                toBuy.Any(i => Same(i.Name, t.Name) && (i.Note is not { Length: > 0 } || Same(i.Note, t.Note))),
+                system))
+            .OrderBy(r => r.Listed).ThenBy(r => !r.None).ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase).ThenBy(r => r.Thing.Note)
+            .ToList();
+        var runOut = shown.Count(r => r.None && !r.Listed);
+        if (!Searching && !historyAll) shown = shown.Where(r => r.None && !r.Listed).ToList();
+        historyShown = shown.Count;
+        HistoryList.ItemsSource = shown;
+        HistoryPanel.Show(all.Count > 0 && (!Searching || shown.Count > 0));
+        HistoryCard.Show(shown.Count > 0);
+        HistoryAllButton.Show(!Searching);
+        HistoryAllText.Text = historyAll ? "Just what's run out" : $"Show all {all.Count}";
+        HistorySummary.Text = Searching ? $"{shown.Count} of {all.Count}"
+            : runOut == 0 ? $"{all.Count} thing{(all.Count == 1 ? "" : "s")}, none run out"
+            : $"{runOut} run out, of {all.Count}";
+    }
+
+    private void HistoryAll_Click(object sender, RoutedEventArgs e)
+    {
+        historyAll = !historyAll;
+        KeepOpen();
+        Redraw();
+    }
+
+    /// <summary>On the list again: the same one (its brand), as much as came the last time.</summary>
+    private void HistoryAdd_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not StockedRow row) return;
+        var thing = row.Thing;
+        App.Database.Save(new GroceryItem { Name = thing.Name, Note = thing.Note.Length > 0 ? thing.Note : null, Quantity = thing.Quantity, Added = DateTime.Now });
+        KeepOpen();
+        Redraw();
+    }
+
+    private void HistoryForget_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not StockedRow row) return;
+        PantryLog.Forget(row.Thing);
+        KeepOpen();
+        Redraw();
     }
 
     // ---- From photos ------------------------------------------------------------------------------------------
@@ -732,10 +836,12 @@ public sealed partial class GroceriesPage : UserControl, IPage
         }
         var (left, portion, amount) = used;
         var system = App.Measures;
-        var what = portion.Read ? Pantry.Show(row.Item with { Amount = portion.Used }, system) : amount;
+        // A weight of what's counted shows as typed (150 g, not ¾); the rest as it comes off.
+        var what = row.Item.Unit is "g" or "mL" || Quantities.Parse(amount) is { Dimension: Dimension.Count }
+            ? Pantry.Show(row.Item with { Amount = portion.Used }, system) : amount;
         var said = (eaten ? $"Ate {what}" + (portion.Kcal > 0 ? $", about {portion.Kcal} kcal" : "") + ", in today's food log." : $"Threw out {what}.")
-            + (!portion.Read ? " How much of it that is can't be told: type what's left in How much is left."
-                : left.Amount <= 0 ? " That was the last of it."
+            + (portion.Guess ? " That's from the usual size of one, so it's marked to count." : "")
+            + (left.Amount <= 0 ? " That was the last of it."
                 : $" {Pantry.Show(left, system)} left.");
         row.Update(left, usedNote: said);
         App.KitchenChanged();
@@ -997,9 +1103,10 @@ public sealed partial class GroceriesPage : UserControl, IPage
     /// <summary>
     /// Into the kitchen, by hand, the way it was put away the last time: where it went, and, with some of it there
     /// already, whether it was kept apart (a bag of its own) or added to that. The first time, it's asked; null when
-    /// that's cancelled. The place's name, or "" when it isn't kept track of.
+    /// that's cancelled. The place's name, or "" when it isn't kept track of. A brand to buy (<paramref name="note"/>)
+    /// is the brand of what's kept apart.
     /// </summary>
-    private string? PutAway(string name, string quantity)
+    private string? PutAway(string name, string quantity, string? note = null)
     {
         if (!Pantry.Tracked(name)) return "";
         var have = PantryLog.Named(name);
@@ -1012,10 +1119,10 @@ public sealed partial class GroceriesPage : UserControl, IPage
                 PantryLog.PutAway(name, quantity, before.Place, before.Group, into);
                 return Pantry.PlaceOf(into, places).Name;
             }
-            PantryLog.PutAway(name, quantity, before.Place, before.Group);
+            PantryLog.PutAway(name, quantity, before.Place, before.Group, note: note);
             return before.Place.Name;
         }
-        var dialog = new WhereWindow(PantryLog.New(name, quantity), have, places, App.Measures) { Owner = Window.GetWindow(this) };
+        var dialog = new WhereWindow(PantryLog.New(name, quantity, note), have, places, App.Measures) { Owner = Window.GetWindow(this) };
         if (dialog.ShowDialog() != true) return null;
         if (dialog.Into is { } some)
         {
@@ -1024,7 +1131,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
             return there.Name;
         }
         if (dialog.Place is not { } place) return null;
-        PantryLog.PutAway(name, quantity, place, dialog.Group, apart: have.Count > 0 ? true : null);
+        PantryLog.PutAway(name, quantity, place, dialog.Group, apart: have.Count > 0 ? true : null, note: note);
         return place.Name;
     }
 
@@ -1089,7 +1196,9 @@ public sealed partial class GroceriesPage : UserControl, IPage
     {
         if (RowOf(sender) is not { } row || !row.TryReadPrice(out var price)) return;
         // Into the kitchen's stock first: asked where, when it's new there, it isn't bought until that's said.
-        if (PutAway(row.Item.Name, row.QuantityText.Trim()) is null) return;
+        if (PutAway(row.Item.Name, row.QuantityText.Trim(), row.Item.Note) is not { } place) return;
+        // What the kitchen doesn't keep track of (paper towels) is kept to buy again all the same.
+        if (place.Length == 0) PantryLog.BoughtOther(row.Item.Name, row.Item.Note, row.QuantityText.Trim());
         row.Item.Quantity = row.QuantityText.Trim();
         row.Item.Price = price;
         row.Item.Bought = DateTime.Now;

@@ -14,8 +14,9 @@ public sealed record FoodEaten(long Id, DateTime At, string Name, string Amount,
 public sealed record FoodEnergy(double Per100, double Piece = 0, double Serving = 100);
 
 /// <summary>What eating some of something in the kitchen comes to: about so many kcal (0 when it can't be told), and
-/// how much comes off the stock in its unit (<paramref name="Read"/> false when that can't be told either).</summary>
-public sealed record Portion(int Kcal, double Used, bool Read);
+/// how much comes off the stock in its unit (<paramref name="Read"/> false when that can't be told either;
+/// <paramref name="Guess"/> when it's from a usual piece or serving of it, not its own).</summary>
+public sealed record Portion(int Kcal, double Used, bool Read, bool Guess = false);
 
 /// <summary>
 /// Calories, roughly: for food in the kitchen, by what its name says (the word that matches last, as
@@ -112,11 +113,25 @@ public static partial class Calories
     private static readonly List<(Regex Pattern, int Length, FoodEnergy Energy)> Patterns =
         Table.SelectMany(t => t.Words.Select(w => (new Regex($@"\b{Regex.Escape(w)}(s|es)?\b", RegexOptions.CultureInvariant), w.Length, t.Energy))).ToList();
 
-    /// <summary>What one piece of something in the kitchen has: from what a piece weighs, if that's set, or else the
+    /// <summary>What one of something counted weighs (or holds): a piece, as it's set; a whole pack, when a pack's size
+    /// is set without how many it holds (it's the packs that are counted: 1 bag of chips); or else, roughly, a usual
+    /// piece of it, from its kcal (an egg about 50 g), a <paramref name="Guess"/>, when what's counted is said to be
+    /// pieces ("egg", not "loaf", nor nothing: 1 bread is a loaf, not a slice). Null when none is known.</summary>
+    private static (double Size, bool Guess)? PieceSize(PantryItem item, FoodEnergy? energy) =>
+        item.Packing?.Each is { } each && each > 0 ? (each, false)
+        : item.Packing is { OfPack: true, PerPack: null, Size: { } pack } && pack > 0 ? (pack, false)
+        : energy is { Piece: > 0, Per100: > 0 } && item.Unit.Length > 0 && !Containers.Any(c => item.Unit.StartsWith(c, StringComparison.OrdinalIgnoreCase))
+            ? (energy.Piece / energy.Per100 * 100, true)
+        : null;
+
+    /// <summary>What things come in, when it's those that are counted: "loaf", "loaves", "bags".</summary>
+    private static readonly string[] Containers = ["loa", "bag", "box", "pack", "jar", "bottle", "carton", "tub", "tray", "bunch", "case", "sleeve"];
+
+    /// <summary>What one piece of something in the kitchen has: from what a piece weighs, if that's known, or else the
     /// usual piece of it; null when it can't be told.</summary>
     private static double? PieceKcal(PantryItem item, FoodEnergy? energy) =>
-        item.Packing?.Each is { } each && energy is not null ? each * energy.Per100 / 100
-        : energy is { Piece: > 0 } ? energy.Piece
+        energy is null ? null
+        : PieceSize(item, energy) is { } piece ? piece.Size * energy.Per100 / 100
         : null;
 
     /// <summary>A usual amount to eat of something in the kitchen, as it's typed: "1" of what's counted, a serving of
@@ -132,22 +147,22 @@ public static partial class Calories
     /// <summary>
     /// Eating <paramref name="amount"/> of something in the kitchen: a count of its pieces ("2" eggs, "1" serving of
     /// what's weighed), or a weight or volume ("150 g", "1 cup"). Volumes are taken as their weight in water. How
-    /// much comes off is in the stock's unit; a weight of something counted comes off only when a piece's weight is
-    /// known.
+    /// much comes off is in the stock's unit: a weight of something counted is shared by what one weighs (a piece, a
+    /// pack, or a usual piece of it), and a serving of what's weighed with no usual serving is 100 g.
     /// </summary>
     public static Portion Eat(PantryItem item, string amount)
     {
         var energy = Of(item.Name);
         var q = Quantities.Parse(amount) ?? new Quantity(1, Dimension.Count);
         double kcal, used;
-        var read = true;
+        bool read = true, guess = false;
         if (item.Unit is "g" or "mL")
         {
             if (q.Dimension == Dimension.Count)
             {
                 var each = item.Packing?.Each ?? energy?.Serving;
-                used = q.Amount * (each ?? 0);
-                read = each is not null;
+                guess = each is null;
+                used = q.Amount * (each ?? 100);
             }
             else used = q.Amount;
             kcal = energy is null ? 0 : used * energy.Per100 / 100;
@@ -160,17 +175,19 @@ public static partial class Calories
         else
         {
             kcal = energy is null ? 0 : q.Amount * energy.Per100 / 100;
-            used = item.Packing?.Each is > 0 and var each ? q.Amount / each : 0;
-            read = item.Packing?.Each is > 0;
+            var piece = PieceSize(item, energy);
+            used = piece is { } p ? q.Amount / p.Size : 0;
+            read = piece is not null;
+            guess = piece?.Guess == true;
         }
-        return new Portion((int)(Math.Round(kcal / 5) * 5), used, read);
+        return new Portion((int)(Math.Round(kcal / 5) * 5), used, read, guess);
     }
 
     /// <summary>What eating some leaves of it: the amount taken off (never below zero), and in doubt when more was eaten
-    /// than there was, or how much couldn't be told.</summary>
+    /// than there was, or how much was a guess or couldn't be told.</summary>
     public static PantryItem Left(PantryItem item, Portion portion)
     {
         var left = item.Amount - portion.Used;
-        return item with { Amount = Math.Max(0, left), Unsure = item.Unsure || left < 0 || !portion.Read };
+        return item with { Amount = Math.Max(0, left), Unsure = item.Unsure || left < 0 || !portion.Read || portion.Guess };
     }
 }

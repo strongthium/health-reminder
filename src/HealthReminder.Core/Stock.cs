@@ -436,9 +436,22 @@ public static partial class Pantry
         return (item with { Amount = item.Amount - part }, item with { Id = 0, Amount = part, Packing = item.Packing is { } p ? p with { Packs = null } : null });
     }
 
+    /// <summary>Something new in the kitchen, kept the way the one of its name and brand (<paramref name="note"/>) was
+    /// before (<paramref name="before"/>, the one last bought first): its brand, picture, colour and what one weighs.
+    /// With no brand said, and none before without one, it has the picture of the one of its name last bought.</summary>
+    public static PantryItem Like(PantryItem item, IReadOnlyList<StockedThing> before, string? note)
+    {
+        note = note?.Trim() ?? "";
+        item = item with { Note = note.Length > 0 ? note : null };
+        if (before.FirstOrDefault(s => s.Note.Equals(note, StringComparison.OrdinalIgnoreCase)) is { } same)
+            return item with { Icon = same.Like.Icon, Color = same.Like.Color, Packing = item.Packing ?? same.Like.Packing };
+        return note.Length == 0 && before.FirstOrDefault() is { } last ? item with { Icon = last.Like.Icon, Color = last.Like.Color } : item;
+    }
+
     /// <summary>Some of something used up, eaten or thrown out: what that comes to (<see cref="Calories.Eat"/>), and
     /// what's left of it. Nothing typed is a usual amount (<see cref="Calories.UsualAmount"/>); null, with a problem,
-    /// when what's typed isn't an amount.</summary>
+    /// when what's typed isn't an amount, or is a weight of something counted whose weight isn't known (it would come
+    /// off as nothing).</summary>
     public static (PantryItem Left, Portion Portion, string Amount)? Use(PantryItem item, string amount, out string problem)
     {
         problem = "";
@@ -451,6 +464,11 @@ public static partial class Pantry
             return null;
         }
         var portion = Calories.Eat(item, amount);
+        if (!portion.Read)
+        {
+            problem = $"What one weighs isn't known, so {amount} of it can't be taken off: type how many (½, 1), or set what one weighs under Weighs or holds.";
+            return null;
+        }
         return (Calories.Left(item, portion), portion, amount);
     }
 
