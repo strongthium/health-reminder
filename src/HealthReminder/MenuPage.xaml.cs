@@ -267,8 +267,9 @@ public sealed partial class MenuPage : UserControl, IPage
 
         var picks = Days.Select(d => DateOnly.FromDateTime(today.AddDays(d)))
             .SelectMany(d => meals.Select(m => (Day: d, m.Name, Choice: Database.Choice(d, m.Name))))
-            .Where(p => p.Choice is not null && Recipes.Get(p.Choice.Value.Recipe) is not null)
-            .Select(p => $"{(p.Day == DateOnly.FromDateTime(today) ? "today" : p.Day.ToString("dddd", CultureInfo.CurrentCulture))}'s {p.Name.ToLowerInvariant()}: {Recipes.Get(p.Choice!.Value.Recipe)!.Name}")
+            .Select(p => (p.Day, p.Name, Recipe: p.Choice is { } c ? Database.Recipe(c.Recipe) : null))
+            .Where(p => p.Recipe is not null)
+            .Select(p => $"{(p.Day == DateOnly.FromDateTime(today) ? "today" : p.Day.ToString("dddd", CultureInfo.CurrentCulture))}'s {p.Name.ToLowerInvariant()}: {p.Recipe!.Name}")
             .ToList();
         PicksText.Text = picks.Count == 0 ? "" : "Picked for a single day, over the menu: " + string.Join("; ", picks) + ".";
         PicksText.Show(picks.Count > 0);

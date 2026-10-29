@@ -89,6 +89,11 @@ The week's shopping in the packs things are sold in, with what's left over: what
 With **Help from Claude** on, three ideas from what's in your kitchen, with what you'd need to buy (a sample answer
 here).
 
+<img src="docs/alarm-ideas.png" alt="Other ideas from my kitchen, on a meal's alarm" width="60%">
+
+When it's time to eat, the meal's alarm asks for other ideas from what you have; **Have this** makes one the meal
+(a sample answer here too).
+
 <img src="docs/kitchen-choose.png" alt="What do you feel like for dinner?" width="49%"> <img src="docs/kitchen-thaw.png" alt="Take the steak out of the freezer" width="49%">
 
 Kitchen alerts: what you feel like, for a meal left to the day; and taking the steak out of the freezer the night
@@ -153,6 +158,22 @@ Cutting down while the body recalibrates: one change a week, each with why it he
 
 The button that stays on top of everything: a click logs one, and the number is today's count.
 
+### Stats
+
+![Stats](docs/stats.png)
+
+What stands out, worked out from the days before: medication missed, more missed than usual, more cigarettes than
+usual by this time of day, cigarettes closer together, fewer drinks than planned, more calories than the plan.
+
+![Stats, the charts](docs/stats-charts.png)
+
+A bar a day for the reminders done, skipped and missed, the cigarettes, the time between them, the drinks and the
+calories, over the last 7, 14 or 30 days.
+
+<img src="docs/log-food.png" alt="Log food" width="60%">
+
+Food logged by hand, from the kitchen (it comes off what you have) or eaten out, with about how many calories.
+
 ### Settings
 
 ![Settings](docs/settings.png)
@@ -178,8 +199,9 @@ Closing the window asks whether to keep running in the tray.
 
 Beside the reminders: a **menu** for one person cooking for themself, with kitchen alerts timed back from each meal; a
 **grocery list** that keeps what things cost and a running stock of your kitchen; **exercise** time set aside on the
-days you choose; and a **smoking log**, with a button that stays on top of everything, for cutting down step by step
-while the body recalibrates.
+days you choose; a **smoking log**, with a button that stays on top of everything, for cutting down step by step
+while the body recalibrates; a **food log** for fast food and snacks, with calories; and **stats**, a chart a day of
+it all, with a word when something stands out.
 
 Each reminder has its own times and days, and its own amount at each time (2 tablets in the morning, 1 at night).
 Everything due at the same time rings together: a blood sugar test, the insulin after it and the morning pills come up
@@ -454,6 +476,9 @@ encrypted for your Windows account with DPAPI), Claude (Claude Opus 5.5, its Mes
 - **suggest meals from what you have**: on **Menu**, **Ask Claude** gives three ideas for one for the chosen meal and
   what you feel like, from what's in your kitchen, using first what won't keep, each with what it uses, what you'd
   need to buy (one click puts that on the list), and timed steps that open at the side of the screen.
+- **swap a meal when it's time to eat**: on a meal's alarm, **Other ideas from my kitchen** stops the sound and
+  asks for three other meals made only from what you have. **Have this** makes one the meal: the alarm and the menu
+  show it, **Steps** opens its steps, and eating it takes what it uses off your kitchen.
 
 Only the photos (made smaller first), the list of food in your kitchen and the meal's calories are sent, to Anthropic;
 nothing about medication or health. What's used is billed to your Anthropic account. It's off until a key is saved.
@@ -487,7 +512,9 @@ exercise can lower blood sugar: test before and after, and carry fast sugar.
 The **Smoking** tab logs cigarettes, to see the pattern and cut down.
 
 - **A button on top of everything** (switched on there) logs one with a click, shows how many today, and can be
-  dragged anywhere; right-click it to undo or hide it. The tray icon's menu logs one too.
+  dragged anywhere; right-click it to undo or hide it. The tray icon's menu logs one too. A click counts once: a
+  double-click, or another click within a second and a half, is the same cigarette. Under the mouse it says how long
+  since the last one, and how many today against yesterday by the same time.
 - **Timing** (optional): click when you light one and again when it's out. The page then shows the average time a
   cigarette takes, against the two weeks before, and when the smoke will have cleared from a room after the last one
   (roughly 2 hours with a window open, 5 or more closed; on clothes and hair, until they're washed). How long a
@@ -529,6 +556,23 @@ tell your doctor or pharmacist, and gives the free quit lines for Canada and the
 Nicotine replacement is there too, folded away under **Other help**, matched to how much you smoke as the packs dose
 it, for anyone who wants a bridge on hard days.
 
+## Food log and stats
+
+- **Log food** (on **Today**, the tray icon's menu, or **Something else…** on a meal's alarm) for what isn't on the
+  menu: from your kitchen, with how much (2 eggs, 150 g, 1 cup), and it comes off what you have; or eaten out, from a
+  list of the usual things (a cheeseburger, medium fries, a poutine, a slice of pizza, a double-double) or typed in.
+  Each has about how many calories, which you can change. In place of a meal, the meal counts as eaten and its recipe
+  doesn't come off the kitchen. Taking something out of the log puts back what came off.
+- **Calories, roughly**: a meal marked eaten counts its recipe's (or the plan's); food from the kitchen is worked out
+  from what its name says (an egg about 72 kcal, rice 360 kcal in 100 g dry, a can of pop 150) and, if it's set, what a
+  piece of it weighs; values are typical ones from the USDA's FoodData Central and the chains' published nutrition.
+  **Today** shows the day's total against the plan.
+- **Stats**: a bar a day for the reminders done, skipped and missed, the cigarettes, the average time between them,
+  the drinks done of those planned, and the calories, over the last 7, 14 or 30 days. What's usual is the week before
+  yesterday, so a bad day doesn't count against itself. A note comes up, there and on **Today**, when a medication was
+  missed, when more were missed than usual, when there are more cigarettes than usual by this time of day (or fewer),
+  when they're closer together, when yesterday had more than usual, few of the drinks, or more calories than planned.
+
 ## Your data
 
 Everything is in one SQLite file, with the photos and videos beside it, in `%LocalAppData%\Strongthium\health-reminder`. Nothing is
@@ -565,8 +609,8 @@ dotnet run --project src/HealthReminder
 
 | Folder | What's in it |
 |---|---|
-| [`src/HealthReminder.Core`](src/HealthReminder.Core) | the reminders and their schedule (SQLite), DailyMed, RxNorm and Health Canada, the photo search, reading a monograph (a small PDF text reader), the eating and drinking planner and meal ideas, the recipes, kitchen alerts and grocery catalog, Claude for grocery photos and ideas (its HTTP API, called directly), the kitchen's stock and medication on hand, exercise plans, amounts in any unit, the grocery list, the smoking log and nicotine replacement, the sounds |
-| [`src/HealthReminder`](src/HealthReminder) | the windows (WPF, with its Fluent theme), the pill drawings and icons, the tray, the on-top smoking button, the sound, the nagging, the webcam recorder (Media Foundation) |
+| [`src/HealthReminder.Core`](src/HealthReminder.Core) | the reminders and their schedule (SQLite), DailyMed, RxNorm and Health Canada, the photo search, reading a monograph (a small PDF text reader), the eating and drinking planner and meal ideas, the recipes, kitchen alerts and grocery catalog, Claude for grocery photos and ideas (its HTTP API, called directly), the kitchen's stock and medication on hand, exercise plans, amounts in any unit, the grocery list, the smoking log and nicotine replacement, the food log and its calories, the days in numbers and what stands out, the sounds |
+| [`src/HealthReminder`](src/HealthReminder) | the windows (WPF, with its Fluent theme), the pill drawings and icons, the tray, the on-top smoking button, the stats charts, the sound, the nagging, the webcam recorder (Media Foundation) |
 | [`tests/HealthReminder.Tests`](tests/HealthReminder.Tests) | tests of the core; they need no network |
 | [`public`](public) | the latest build, made by `build.ps1` |
 | [`build.ps1`](build.ps1), [`build.cmd`](build.cmd), [`VERSION`](VERSION) | the builder, and the version it builds |

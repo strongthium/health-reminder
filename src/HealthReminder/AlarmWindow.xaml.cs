@@ -7,8 +7,16 @@ using Forms = System.Windows.Forms;
 
 namespace Strongthium.HealthReminder;
 
+/// <summary>An idea from Claude on a meal's alarm, to have instead of the meal it shows.</summary>
+public sealed class AlarmIdea(AlarmItem item, KitchenIdea idea)
+{
+    public AlarmItem Item => item;
+    public KitchenIdea Idea => idea;
+    public string Detail => new IdeaRow(idea).Detail;
+}
+
 /// <summary>One dose on the alarm: what to do, how much, and what it looks like; the reading or site to record.</summary>
-public sealed class AlarmItem
+public sealed class AlarmItem : INotifyPropertyChanged
 {
     public AlarmItem(Dose dose, string imageDirectory, int snoozeMinutes, Schedule schedule, IReadOnlyList<Reminder> reminders)
     {
@@ -62,14 +70,84 @@ public sealed class AlarmItem
     /// glass of orange juice".</summary>
     public string Idea =>
         Kind != ReminderKind.Meal ? ""
-        : KitchenLog.Meals(DateOnly.FromDateTime(Dose.Due)).FirstOrDefault(m => m.Meal == Name && m.At == Dose.Due)?.Recipe is { } picked ? picked.Name
+        : Recipe is { } picked ? picked.Name
         : Reminder.Unit == "kcal" && Dose.Amount > 1 ? Meals.Suggest(Meals.SlotOf(Name), Dose.Amount, DateOnly.FromDateTime(Dose.Due)).ToString()
         : "";
+    public string IdeaLabel => Recipe is null ? "FOR EXAMPLE" : "ON THE MENU";
+
+    /// <summary>The meal as the menu has it (snacks aren't on it): what's picked for it, if anything.</summary>
+    public PlannedMeal? Meal => Kind != ReminderKind.Meal ? null
+        : KitchenLog.Meals(DateOnly.FromDateTime(Dose.Due)).FirstOrDefault(m => m.Meal == Name && m.At == Dose.Due);
+    public Recipe? Recipe => Meal?.Recipe;
+    public bool HasRecipe => Recipe is not null;
+
+    // ---- Other ideas, from Claude ----
+
+    private IReadOnlyList<AlarmIdea> ideas = [];
+    private string ideasText = "";
+    private bool asking;
+
+    /// <summary>A meal on the menu, with Claude on, can be swapped for an idea from what's in the kitchen.</summary>
+    public bool CanAskClaude => Meal is not null && App.Current.ClaudeOn;
+    public bool CanAsk => CanAskClaude && !asking;
+
+    public bool Asking
+    {
+        get => asking;
+        set
+        {
+            asking = value;
+            Notify(nameof(CanAsk));
+        }
+    }
+
+    public IReadOnlyList<AlarmIdea> Ideas
+    {
+        get => ideas;
+        set
+        {
+            ideas = value;
+            Notify();
+        }
+    }
+
+    public string IdeasText
+    {
+        get => ideasText;
+        set
+        {
+            ideasText = value;
+            Notify();
+        }
+    }
+
+    /// <summary>Another meal was picked for it: what it shows follows.</summary>
+    public void MealChanged()
+    {
+        Notify(nameof(Idea));
+        Notify(nameof(IdeaLabel));
+        Notify(nameof(HasRecipe));
+    }
+
+    /// <summary>The ideas of the same dose on the alarm before it was rebuilt.</summary>
+    public void Keep(AlarmItem before)
+    {
+        ideas = before.ideas.Select(i => new AlarmIdea(this, i.Idea)).ToList();
+        ideasText = before.ideasText;
+        asking = before.asking;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void Notify([System.Runtime.CompilerServices.CallerMemberName] string name = "") => PropertyChanged?.Invoke(this, new(name));
     public string DueText => "Due at " + Format.Time(Dose.Due) + (Dose.Due.Date != DateTime.Today ? " yesterday" : "");
     public string SnoozeText { get; }
     public string DoneText => Reminder.RecordVideo ? Evidence.ButtonText(Kind) : Kind.DoneText();
     public ImageSource? Photo { get; }
     public bool HasPhoto => Photo is not null;
+
+    /// <summary>A meal or a snack: something else eaten can be logged in its place.</summary>
+    public bool IsMeal => Kind == ReminderKind.Meal;
 
     public bool IsInjection => Kind == ReminderKind.Injection && Reminder.Sites.Count > 0;
     public IReadOnlyList<string> Sites => Reminder.Sites;
@@ -174,6 +252,7 @@ public sealed partial class AlarmWindow : Window
             .Select(x =>
             {
                 var item = Item(x.item.Dose with { Reminder = x.reminder! });
+                item.Keep(x.item);
                 item.Value = x.item.Value;
                 if (x.item.Site.Length > 0) item.Site = x.item.Site;
                 return item;
@@ -224,7 +303,8 @@ public sealed partial class AlarmWindow : Window
         Native.Center(this);
         Activate();
         Native.Flash(this);
-        if (Level == NagLevel.Insistent) Shake();
+        // Not while Claude's ideas are being read.
+        if (Level == NagLevel.Insistent && !items.Any(i => i.Asking || i.Ideas.Count > 0)) Shake();
         if (app.Escalate && !silenced && AlarmSound.Playing && volume < 1)
         {
             volume = Math.Min(1, volume + 0.15);
@@ -359,6 +439,18 @@ public sealed partial class AlarmWindow : Window
         if ((sender as FrameworkElement)?.DataContext is AlarmItem item) Answer(item, i => App.Current.Schedule.Skipped(i.Dose, DateTime.Now));
     }
 
+    /// <summary>Something else eaten in place of the meal: logged, and the meal done, unless it was logged on its own.
+    /// Someone's there, so the sound stops.</summary>
+    private void SomethingElse_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not AlarmItem item) return;
+        Silence_Click(sender, e);
+        var food = new FoodWindow(item.Dose) { Owner = this };
+        if (food.ShowDialog() != true) return;
+        if (food.Meal?.Key == item.Dose.Key) Answer(item, _ => { });
+        else App.Current.Changed();
+    }
+
     private void Snooze_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is AlarmItem item)
@@ -389,6 +481,60 @@ public sealed partial class AlarmWindow : Window
         AlarmSound.Stop();
         silenced = true;
         SilenceButton.Show(false);
+    }
+
+    // ---- Other ideas for a meal, from Claude --------------------------------------------------------------------
+
+    /// <summary>Asks Claude for three meals from what's in the kitchen, other than the one shown. Someone's there, so
+    /// the sound stops.</summary>
+    private async void AskIdeas_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not AlarmItem item || App.Current.Assistant is not { } assistant || item.Meal is not { } meal) return;
+        Silence_Click(sender, e);
+        var kitchen = Pantry.Kitchen(PantryLog.Items(), App.Current.Measures);
+        if (kitchen.Count == 0)
+        {
+            item.IdeasText = "There's nothing in your kitchen yet: add groceries on the Groceries page (from photos, or as you buy them).";
+            return;
+        }
+        item.Asking = true;
+        item.Ideas = [];
+        item.IdeasText = "Asking Claude for ideas from your kitchen…";
+        var key = item.Dose.Key;
+        List<KitchenIdea> found = [];
+        string text;
+        try
+        {
+            found = await assistant.IdeasAsync(kitchen, meal.Slot, meal.Kcal > 0 ? meal.Kcal : 600, null, DateTime.Now, instead: item.Idea);
+            text = found.Count == 0 ? "No ideas came back; try again." : "Pick one to have instead:";
+        }
+        catch (KitchenAssistantException ex)
+        {
+            text = ex.Message;
+        }
+        // The alarm may have been rebuilt meanwhile, or the dose answered.
+        if (items.FirstOrDefault(i => i.Dose.Key == key) is not { } now) return;
+        now.Asking = false;
+        now.Ideas = found.Select(i => new AlarmIdea(now, i)).ToList();
+        now.IdeasText = text;
+    }
+
+    /// <summary>An idea picked: it's the meal now, here and on the menu, and eating it takes what it uses off the
+    /// kitchen's stock.</summary>
+    private void HaveIdea_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not AlarmIdea choice) return;
+        if (items.FirstOrDefault(i => i.Dose.Key == choice.Item.Dose.Key) is not { Meal: { } meal } item) return;
+        KitchenLog.PickIdea(meal, choice.Idea, DateTime.Now);
+        item.Ideas = [];
+        item.IdeasText = "";
+        item.MealChanged();
+        App.Current.KitchenChanged();
+    }
+
+    private void RecipeSteps_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is AlarmItem { Recipe: { } recipe } item) App.Current.ShowSteps(recipe, item.Dose.Due);
     }
 
     protected override void OnClosing(CancelEventArgs e)

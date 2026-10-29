@@ -32,6 +32,7 @@
         <RadioButton x:Name="GroceriesNav" Style="{StaticResource NavItem}" Tag="&#xE7BF;" Content="Groceries" Checked="Nav_Checked" />
         <RadioButton x:Name="ExerciseNav" Style="{StaticResource NavItem}" Tag="&#xE805;" Content="Exercise" Checked="Nav_Checked" />
         <RadioButton x:Name="SmokingNav" Style="{StaticResource NavItem}" Tag="&#xE916;" Content="Smoking" Checked="Nav_Checked" />
+        <RadioButton x:Name="StatsNav" Style="{StaticResource NavItem}" Tag="&#xE9D2;" Content="Stats" Checked="Nav_Checked" />
         <RadioButton x:Name="HistoryNav" Style="{StaticResource NavItem}" Tag="&#xE81C;" Content="History" Checked="Nav_Checked" />
         <RadioButton x:Name="SettingsNav" Style="{StaticResource NavItem}" Tag="&#xE713;" Content="Settings" Checked="Nav_Checked" />
       </StackPanel>

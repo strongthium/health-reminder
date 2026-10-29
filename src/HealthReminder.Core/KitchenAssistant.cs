@@ -13,8 +13,9 @@ public sealed record SeenFood(string Name, string Quantity, string Where, int Us
 public sealed record KitchenIdea(string Name, string Why, int Kcal, int PrepMinutes, int CookMinutes, string[] Uses, string[] Missing,
     IdeaIngredient[] Ingredients, IdeaStep[] Steps)
 {
-    /// <summary>The idea as a recipe, for the steps at the side of the screen.</summary>
-    public Recipe ToRecipe(MealSlot slot) => new("idea", Name, [slot], Kcal, PrepMinutes, CookMinutes, 0, [],
+    /// <summary>The idea as a recipe, for the steps at the side of the screen, or picked for a meal (kept by
+    /// <paramref name="id"/>).</summary>
+    public Recipe ToRecipe(MealSlot slot, string id = "idea") => new(id, Name, [slot], Kcal, PrepMinutes, CookMinutes, 0, [],
         Ingredients.Select(i => new FoodItem(i.Amount, i.Name, "")).ToArray(), Steps.Select(s => new CookStep(s.Text, s.Minutes)).ToArray());
 }
 
@@ -76,16 +77,23 @@ public sealed class KitchenAssistant(string apiKey, HttpClient? http = null)
         return JsonSerializer.Deserialize(answer, AnswerJson.Default.PhotoAnswer)?.Items ?? [];
     }
 
-    /// <summary>Three meal ideas for a meal of about <paramref name="kcal"/>, from what's in the kitchen.</summary>
-    public async Task<List<KitchenIdea>> IdeasAsync(IReadOnlyList<KitchenFood> kitchen, MealSlot slot, double kcal, string? feel, DateTime now, CancellationToken cancel = default)
+    /// <summary>Three meal ideas for a meal of about <paramref name="kcal"/>, from what's in the kitchen. With
+    /// <paramref name="instead"/>, it's time to eat: only what's there, and other than that meal, when it's said.</summary>
+    public async Task<List<KitchenIdea>> IdeasAsync(IReadOnlyList<KitchenFood> kitchen, MealSlot slot, double kcal, string? feel, DateTime now,
+        string? instead = null, CancellationToken cancel = default)
+    {
+        var answer = await AskAsync(Request(IdeaInstructions, [new TextBlock(IdeasAsk(kitchen, slot, kcal, feel, now, instead))], IdeasSchema), cancel);
+        return JsonSerializer.Deserialize(answer, AnswerJson.Default.IdeasAnswer)?.Ideas ?? [];
+    }
+
+    internal static string IdeasAsk(IReadOnlyList<KitchenFood> kitchen, MealSlot slot, double kcal, string? feel, DateTime now, string? instead)
     {
         var list = string.Join("\n", kitchen.Select(f => $"- {f.Name}" + (f.Quantity.Length > 0 ? $" ({f.Quantity})" : "")
             + (f.UseBy is { } by ? $", best used by {by:dddd MMMM d}" : "")));
-        var ask = $"Today is {now:dddd MMMM d}. The meal is {slot.ToString().ToLowerInvariant()}, about {kcal:0} kcal."
+        return $"Today is {now:dddd MMMM d}. The meal is {slot.ToString().ToLowerInvariant()}, about {kcal:0} kcal."
             + (feel is { Length: > 0 } ? $" They feel like: {feel}." : "")
+            + (instead is null ? "" : " It's time to eat now, so use only what they have" + (instead.Length > 0 ? $", and something other than: {instead}." : "."))
             + $"\n\nIn their kitchen:\n{list}\n\nStaples like oil, salt, pepper and common spices can be assumed.";
-        var answer = await AskAsync(Request(IdeaInstructions, [new TextBlock(ask)], IdeasSchema), cancel);
-        return JsonSerializer.Deserialize(answer, AnswerJson.Default.IdeasAnswer)?.Ideas ?? [];
     }
 
     // The shapes of the answers (structured outputs): every object closed, every field required.
@@ -249,4 +257,5 @@ public sealed class KitchenAssistant(string apiKey, HttpClient? http = null)
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower, PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(KitchenAssistant.PhotoAnswer))]
 [JsonSerializable(typeof(KitchenAssistant.IdeasAnswer))]
+[JsonSerializable(typeof(KitchenIdea))]
 internal sealed partial class AnswerJson : JsonSerializerContext;

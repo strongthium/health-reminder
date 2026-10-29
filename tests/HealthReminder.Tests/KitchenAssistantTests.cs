@@ -84,6 +84,41 @@ public sealed class KitchenAssistantTests
     }
 
     [Fact]
+    public void AtMealTimeTheIdeasAreFromWhatsThereAndSomethingElse()
+    {
+        var now = new DateTime(2026, 10, 28, 12, 0, 0);
+        List<KitchenFood> kitchen = [new("Eggs", "6", null), new("Spinach", "1 box", now.AddDays(2))];
+        var ask = KitchenAssistant.IdeasAsk(kitchen, MealSlot.Lunch, 550, null, now, "Tuna sandwich");
+        Assert.Contains("The meal is lunch, about 550 kcal. It's time to eat now, so use only what they have, and something other than: Tuna sandwich.", ask);
+        Assert.Contains("- Spinach (1 box), best used by Friday October 30", ask);
+        Assert.EndsWith("use only what they have.", KitchenAssistant.IdeasAsk(kitchen, MealSlot.Lunch, 550, null, now, "").Split('\n')[0]);
+        // From the Menu page, planning ahead: a few things may be bought.
+        Assert.DoesNotContain("time to eat", KitchenAssistant.IdeasAsk(kitchen, MealSlot.Lunch, 550, "something hot", now, null));
+    }
+
+    [Fact]
+    public void AnIdeaPickedForAMealIsKeptAsARecipe()
+    {
+        using var database = new Database();
+        var idea = new KitchenIdea("Spinach omelette", "Uses the spinach.", 420, 5, 6, ["Eggs", "Spinach"], [],
+            [new("3", "eggs"), new("a handful of", "spinach")], [new("Beat the eggs.", 0), new("Cook until set.", 4)]);
+        var id = database.SaveIdea(idea, MealSlot.Lunch);
+        var day = new DateOnly(2026, 10, 28);
+        database.SetChoice(day, "Lunch", id);
+
+        var recipe = database.Recipe(database.Choice(day, "Lunch")!.Value.Recipe)!;
+        Assert.StartsWith("idea-", recipe.Id);
+        Assert.Equal(("Spinach omelette", 420, 5, 6), (recipe.Name, recipe.Kcal, recipe.PrepMinutes, recipe.CookMinutes));
+        Assert.Equal([MealSlot.Lunch], recipe.Slots);
+        Assert.Equal(["3 eggs", "a handful of spinach"], recipe.Ingredients.Select(i => i.ToString()));
+        Assert.Equal(4, recipe.Steps[1].Minutes);
+        // The app's own recipes are found by their ids as before; an idea that isn't kept is nothing.
+        Assert.Same(Recipes.All[0], database.Recipe(Recipes.All[0].Id));
+        Assert.Null(database.Recipe("idea-000000000000"));
+        Assert.Null(database.Recipe(null));
+    }
+
+    [Fact]
     public void WhatsInTheKitchenComesWithItsUseByDay()
     {
         var bought = new DateTime(2026, 10, 25, 10, 0, 0);

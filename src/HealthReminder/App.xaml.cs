@@ -258,6 +258,7 @@ public sealed partial class App : Application
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Open Health Reminder", null, (_, _) => ShowMainWindow());
         menu.Items.Add("Log a cigarette", null, (_, _) => SmokeLog.Click());
+        menu.Items.Add("Log food…", null, (_, _) => LogFood());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Quit (no more reminders)", null, (_, _) => Quit());
         using (var icon = GetResourceStream(new Uri("pack://application:,,,/health-reminder;component/Assets/health-reminder.ico")).Stream)
@@ -379,6 +380,15 @@ public sealed partial class App : Application
         if (alarmWindow is null && ChimeWav(AlertGroup.EatDrink, Volume / 100.0) is { } wav) AlarmSound.Play(wav, loop: false);
     }
 
+    /// <summary>Food eaten, logged from the tray: over the main window when it's up.</summary>
+    private void LogFood()
+    {
+        var food = new FoodWindow();
+        if (mainWindow is { IsVisible: true }) food.Owner = mainWindow;
+        else food.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        if (food.ShowDialog() == true) Changed();
+    }
+
     /// <summary>A meal was picked, or a kitchen alert answered.</summary>
     public void KitchenChanged() => mainWindow?.Refresh();
 
@@ -474,12 +484,21 @@ public sealed partial class App : Application
         }
     }
 
-    /// <summary>A cigarette was logged, finished or taken back.</summary>
+    /// <summary>A cigarette was logged, finished or taken back. The button's count is shown first; the pages, which
+    /// take longer, once it's drawn.</summary>
     public void SmokeChanged()
     {
         smokeButton?.Update();
-        mainWindow?.Refresh();
+        if (refreshQueued) return;
+        refreshQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            refreshQueued = false;
+            mainWindow?.Refresh();
+        });
     }
+
+    private bool refreshQueued;
 
     public void ShowMainWindow()
     {

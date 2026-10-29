@@ -10,9 +10,9 @@ namespace Strongthium.HealthReminder;
 public sealed class Database : IDisposable
 {
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
-    // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs. Tables of their own that the
-    // CREATE adds.
-    private const int SchemaVersion = 9;
+    // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs; 10: Claude's ideas picked for
+    // a meal; 11: food eaten, logged by hand. Tables of their own that the CREATE adds.
+    private const int SchemaVersion = 11;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -156,6 +156,24 @@ public sealed class Database : IDisposable
                 kcal    INTEGER NOT NULL DEFAULT 0,
                 done    TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS idea (
+                id    TEXT PRIMARY KEY,             -- "idea-…", as meal_choice has it
+                slot  TEXT NOT NULL,                -- MealSlot
+                idea  TEXT NOT NULL,                -- Claude's KitchenIdea, as JSON
+                saved TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS food_log (
+                id     INTEGER PRIMARY KEY,
+                at     TEXT NOT NULL,
+                name   TEXT NOT NULL,
+                amount TEXT NOT NULL DEFAULT '',  -- as typed: "2", "150 g"
+                kcal   INTEGER NOT NULL DEFAULT 0,
+                pantry TEXT,                       -- the stock it came from, if any
+                used   REAL NOT NULL DEFAULT 0,     -- how much came off it, in its unit
+                unit   TEXT NOT NULL DEFAULT '',
+                meal   TEXT                        -- the meal it was had in place of: its Dose.Key
+            );
+            CREATE INDEX IF NOT EXISTS food_log_at ON food_log (at);
             """);
         // 1 to 2: the DIN and the prescription number.
         if (version == 1) Execute("ALTER TABLE reminder ADD COLUMN din TEXT NOT NULL DEFAULT ''; ALTER TABLE reminder ADD COLUMN rx_number TEXT NOT NULL DEFAULT '';");
@@ -594,6 +612,45 @@ public sealed class Database : IDisposable
         }
     }
 
+    /// <summary>Keeps an idea from Claude so it can be picked for a meal; its id, for <see cref="SetChoice"/>. Ideas over
+    /// two weeks old are let go, as the choices are.</summary>
+    public string SaveIdea(KitchenIdea idea, MealSlot slot)
+    {
+        var id = "idea-" + Guid.NewGuid().ToString("N")[..12];
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO idea (id, slot, idea, saved) VALUES ($id, $slot, $idea, $saved);
+                DELETE FROM idea WHERE saved < $old;
+                """;
+            command.Parameters.AddWithValue("$id", id);
+            command.Parameters.AddWithValue("$slot", slot.ToString());
+            command.Parameters.AddWithValue("$idea", System.Text.Json.JsonSerializer.Serialize(idea, AnswerJson.Default.KitchenIdea));
+            command.Parameters.AddWithValue("$saved", DateTime.Now.ToString("s", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$old", DateTime.Now.AddDays(-14).ToString("s", CultureInfo.InvariantCulture));
+            command.ExecuteNonQuery();
+        }
+        return id;
+    }
+
+    /// <summary>A recipe by its id: one of the app's, or an idea from Claude that was kept; null when there's none.</summary>
+    public Recipe? Recipe(string? id)
+    {
+        if (Recipes.Get(id) is { } recipe) return recipe;
+        if (id is null || !id.StartsWith("idea-", StringComparison.Ordinal)) return null;
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT slot, idea FROM idea WHERE id = $id";
+            command.Parameters.AddWithValue("$id", id);
+            using var r = command.ExecuteReader();
+            if (!r.Read()) return null;
+            var idea = System.Text.Json.JsonSerializer.Deserialize(r.GetString(1), AnswerJson.Default.KitchenIdea);
+            return idea?.ToRecipe(Enum.TryParse<MealSlot>(r.GetString(0), out var slot) ? slot : MealSlot.Dinner, id);
+        }
+    }
+
     /// <summary>The kitchen alerts done (their keys), from <paramref name="from"/> on.</summary>
     public HashSet<string> KitchenDone(DateTime from)
     {
@@ -809,6 +866,56 @@ public sealed class Database : IDisposable
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE pantry SET place = NULL WHERE place = $id; DELETE FROM place WHERE id = $id";
             command.Parameters.AddWithValue("$id", id);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>The food logged as eaten from <paramref name="from"/> on, oldest first.</summary>
+    public List<FoodEaten> FoodLog(DateTime from)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT id, at, name, amount, kcal, pantry, used, unit, meal FROM food_log WHERE at >= $from ORDER BY at, id";
+            command.Parameters.AddWithValue("$from", from.ToString("s", CultureInfo.InvariantCulture));
+            using var r = command.ExecuteReader();
+            var log = new List<FoodEaten>();
+            while (r.Read())
+                log.Add(new(r.GetInt64(0), DateTime.Parse(r.GetString(1), CultureInfo.InvariantCulture), r.GetString(2), r.GetString(3), r.GetInt32(4),
+                    r.IsDBNull(5) ? null : r.GetString(5), r.GetDouble(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8)));
+            return log;
+        }
+    }
+
+    /// <summary>Food eaten, logged; its id is set.</summary>
+    public FoodEaten Save(FoodEaten food)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = food.Id == 0
+                ? "INSERT INTO food_log (at, name, amount, kcal, pantry, used, unit, meal) VALUES ($at, $name, $amount, $kcal, $pantry, $used, $unit, $meal) RETURNING id"
+                : "UPDATE food_log SET at = $at, name = $name, amount = $amount, kcal = $kcal, pantry = $pantry, used = $used, unit = $unit, meal = $meal WHERE id = $id RETURNING id";
+            command.Parameters.AddWithValue("$id", food.Id);
+            command.Parameters.AddWithValue("$at", food.At.ToString("s", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("$name", food.Name.Trim());
+            command.Parameters.AddWithValue("$amount", food.Amount.Trim());
+            command.Parameters.AddWithValue("$kcal", food.Kcal);
+            command.Parameters.AddWithValue("$pantry", (object?)food.Pantry ?? DBNull.Value);
+            command.Parameters.AddWithValue("$used", food.Used);
+            command.Parameters.AddWithValue("$unit", food.Unit);
+            command.Parameters.AddWithValue("$meal", (object?)food.Meal ?? DBNull.Value);
+            return food with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
+        }
+    }
+
+    public void Delete(FoodEaten food)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM food_log WHERE id = $id";
+            command.Parameters.AddWithValue("$id", food.Id);
             command.ExecuteNonQuery();
         }
     }

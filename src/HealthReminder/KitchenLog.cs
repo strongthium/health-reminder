@@ -63,9 +63,9 @@ internal static class KitchenLog
                 var at = day.ToDateTime(time.Time);
                 var kcal = reminder.Unit == "kcal" ? time.Amount : 0;
                 if (Database.Choice(day, reminder.Name) is { } choice)
-                    meals.Add(new(reminder.Name, at, slot, Recipes.Get(choice.Recipe), Decided: choice.Decided, Kcal: kcal));
+                    meals.Add(new(reminder.Name, at, slot, Database.Recipe(choice.Recipe), Decided: choice.Decided, Kcal: kcal));
                 else if (menu.TryGetValue((day.DayOfWeek, reminder.Name), out var planned))
-                    meals.Add(new(reminder.Name, at, slot, Recipes.Get(planned.Recipe), planned.Recipe == "decide", planned.Decided, kcal));
+                    meals.Add(new(reminder.Name, at, slot, Database.Recipe(planned.Recipe), planned.Recipe == "decide", planned.Decided, kcal));
                 else
                     meals.Add(new(reminder.Name, at, slot, null, Kcal: kcal));
             }
@@ -109,4 +109,14 @@ internal static class KitchenLog
     /// <summary>The recipe picked for a meal on its day, from an alert or the Menu page.</summary>
     public static void Pick(PlannedMeal meal, Recipe recipe) =>
         Database.SetChoice(DateOnly.FromDateTime(meal.At), meal.Meal, recipe.Id);
+
+    /// <summary>An idea from Claude picked for a meal when it's time to eat it: kept, and what it would have rung for
+    /// already (time to start it) let go, since it's being made now.</summary>
+    public static Recipe PickIdea(PlannedMeal meal, KitchenIdea idea, DateTime now)
+    {
+        var id = Database.SaveIdea(idea, meal.Slot);
+        Database.SetChoice(DateOnly.FromDateTime(meal.At), meal.Meal, id);
+        foreach (var e in Events(now.AddHours(-3), now).Where(e => e.Meal.Meal == meal.Meal && e.Meal.At == meal.At)) Done(e);
+        return idea.ToRecipe(meal.Slot, id);
+    }
 }

@@ -39,6 +39,83 @@
         </Grid>
       </Border>
 
+      <!-- What stands out (Stats), when something does. -->
+      <Border x:Name="NoteCard" Style="{StaticResource Card}" Padding="20,12" Margin="0,0,0,16">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <ItemsControl x:Name="NoteList" Focusable="False">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:NoteRow}">
+                <Grid Margin="0,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Border Width="22" Height="22" CornerRadius="11" Background="{Binding Brush}" VerticalAlignment="Top" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding Icon}" Style="{StaticResource Icon}" FontSize="11" Foreground="White" HorizontalAlignment="Center" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Grid.Column="1" Content="Stats" Click="Stats_Click" Padding="14,5" VerticalAlignment="Top" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+
+      <!-- Food logged by hand today, and about how many kcal the day comes to. -->
+      <Border x:Name="FoodCard" Style="{StaticResource Card}" Padding="20,14" Margin="0,0,0,16">
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <Ellipse Width="10" Height="10" Fill="#B84A0B" VerticalAlignment="Center" Margin="0,1,10,0" />
+                <TextBlock x:Name="FoodTitle" Style="{StaticResource Heading}" FontSize="15" />
+              </StackPanel>
+              <TextBlock x:Name="FoodDetail" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="20,2,0,0" />
+            </StackPanel>
+            <Button Grid.Column="1" Click="LogFood_Click" Padding="14,5" VerticalAlignment="Center"
+                    ToolTip="Something from your kitchen, or eaten out">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE710;" Style="{StaticResource Icon}" FontSize="12" Margin="0,0,8,0" />
+                <TextBlock Text="Log food" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <ItemsControl x:Name="FoodList" Focusable="False" Margin="20,6,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="{x:Type local:FoodRow}">
+                <Grid Margin="0,2">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="86" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Time}" Style="{StaticResource Muted}" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Kcal}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0" />
+                  <Button Grid.Column="3" Style="{StaticResource Bare}" Click="RemoveFood_Click" Padding="6" VerticalAlignment="Center"
+                          ToolTip="Take it out of the log (what came off the kitchen goes back)">
+                    <TextBlock Text="&#xE711;" Style="{StaticResource Icon}" FontSize="11" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <!-- Today's exercise, if it's an exercise day. -->
       <Border x:Name="ExerciseCard" Style="{StaticResource Card}" Padding="20,14" Margin="0,0,0,16">
         <Grid>

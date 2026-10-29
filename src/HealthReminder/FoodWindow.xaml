@@ -1,0 +1,136 @@
+<Window x:Class="Strongthium.HealthReminder.FoodWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Strongthium.HealthReminder"
+        Title="Log food"
+        Width="660" Height="720" MinWidth="560" MinHeight="560"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <!-- Food eaten, logged by hand: picked from the kitchen (it comes off the stock) or from what's usually eaten out,
+       or typed; each with an amount and about how many kcal, which can be changed. In place of a meal, the meal counts
+       as eaten. -->
+  <DockPanel Margin="24,20,24,20">
+    <StackPanel DockPanel.Dock="Top">
+      <TextBlock Text="What did you eat?" Style="{StaticResource Title}" />
+      <TextBlock Style="{StaticResource Caption}" Margin="0,4,0,0"
+                 Text="Pick from your kitchen or from what's usually eaten out, then set how much. Calories are about right for a usual size: change them if the package or the menu says otherwise." />
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+      <TextBlock Text="Eaten" Style="{StaticResource Label}" Margin="0,0,0,6" />
+      <TextBlock x:Name="NothingYet" Style="{StaticResource Muted}" Text="Nothing yet: pick something above." />
+      <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto">
+        <ItemsControl x:Name="EatenList" Focusable="False">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type local:FoodLine}">
+              <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="110" />
+                  <ColumnDefinition Width="80" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" />
+                </StackPanel>
+                <TextBox Grid.Column="1" Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged}" ToolTip="How much: 2, 150 g, 1 cup" Margin="0,0,6,0" />
+                <TextBox Grid.Column="2" Text="{Binding KcalText, UpdateSourceTrigger=PropertyChanged}" ToolTip="About how many kcal" />
+                <TextBlock Grid.Column="3" Text="kcal" VerticalAlignment="Center" Margin="6,0,6,0" Style="{StaticResource Muted}" />
+                <Button Grid.Column="4" Style="{StaticResource Bare}" Click="Remove_Click" ToolTip="Take it out" Padding="6">
+                  <TextBlock Text="&#xE711;" Style="{StaticResource Icon}" FontSize="12" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <TextBlock x:Name="TotalText" FontWeight="SemiBold" Margin="0,6,0,0" />
+
+      <Grid Margin="0,16,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="In place of" VerticalAlignment="Center" Margin="0,0,10,0" />
+        <ComboBox x:Name="MealBox" Grid.Column="1" HorizontalAlignment="Left" MinWidth="220"
+                  ToolTip="Had instead of a meal: the meal counts as eaten, and its recipe doesn't come off the kitchen" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal">
+          <Button Content="Cancel" IsCancel="True" Padding="16,6" />
+          <Button x:Name="LogButton" Content="Log it" Click="Log_Click" IsDefault="True" Style="{DynamicResource AccentButtonStyle}" Padding="16,6" Margin="8,0,0,0" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+
+    <TabControl Margin="0,14,0,0">
+      <TabItem Header="From my kitchen">
+        <DockPanel Margin="0,10,0,0">
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBox x:Name="FindBox" TextChanged="Find_Changed" />
+            <TextBlock Text="Find in the kitchen" Style="{StaticResource Muted}" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center"
+                       Visibility="{Binding Text.IsEmpty, ElementName=FindBox, Converter={StaticResource VisibleIf}}" />
+          </Grid>
+          <TextBlock x:Name="KitchenEmpty" DockPanel.Dock="Top" Style="{StaticResource Muted}" TextWrapping="Wrap" Visibility="Collapsed"
+                     Text="Nothing in the kitchen matches. Add what you have on the Groceries page, or pick from Eaten out." />
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="KitchenList" Focusable="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:KitchenChoice}">
+                  <Button Style="{StaticResource Bare}" HorizontalContentAlignment="Stretch" Click="Kitchen_Click" Padding="6,4" ToolTip="Add it">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <local:FoodView Icon="{Binding Item.ShownIcon}" Tint="{Binding Item.ShownColor}" Width="28" Height="28" Margin="0,0,10,0" />
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="&#xE710;" Style="{StaticResource Icon}" FontSize="12" Margin="10,0,4,0" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Eaten out">
+        <DockPanel Margin="0,10,0,0">
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="OtherBox" KeyDown="Other_KeyDown" />
+            <TextBlock Text="Something else: type what it was" Style="{StaticResource Muted}" IsHitTestVisible="False" Margin="12,0,0,0" VerticalAlignment="Center"
+                       Visibility="{Binding Text.IsEmpty, ElementName=OtherBox, Converter={StaticResource VisibleIf}}" />
+            <Button Grid.Column="1" Content="Add" Click="Other_Click" Padding="14,5" Margin="8,0,0,0" />
+          </Grid>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="OutList" Focusable="False">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{StaticResource Bare}" HorizontalContentAlignment="Stretch" Click="Out_Click" Padding="8,5" ToolTip="Add it">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Kcal, StringFormat='{}{0} kcal'}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                      <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </DockPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

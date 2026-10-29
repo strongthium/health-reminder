@@ -11,11 +11,16 @@
        through. -->
   <Grid Margin="6" Width="56" Height="56" HorizontalAlignment="Left" VerticalAlignment="Top">
     <Border x:Name="Face" Width="56" Height="56" CornerRadius="28" Background="#37474F" BorderBrush="#33FFFFFF" BorderThickness="1"
-            Cursor="Hand">
+            Cursor="Hand" RenderTransformOrigin="0.5,0.5">
+      <Border.RenderTransform>
+        <ScaleTransform x:Name="Scale" />
+      </Border.RenderTransform>
       <Border.Effect>
-        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.35" />
+        <DropShadowEffect x:Name="Shadow" BlurRadius="8" ShadowDepth="2" Opacity="0.35" />
       </Border.Effect>
       <Grid>
+        <!-- Lighter under the mouse, darker while a click is being logged (when more clicks are let go). -->
+        <Border x:Name="Shade" CornerRadius="28" Background="White" Opacity="0" IsHitTestVisible="False" />
         <!-- A cigarette: white paper, an orange filter, a glowing end. -->
         <Canvas x:Name="Cigarette" Width="36" Height="10" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Rectangle Canvas.Left="0" Width="10" Height="8" Canvas.Top="1" RadiusX="1.5" RadiusY="1.5" Fill="#E8A35C" />

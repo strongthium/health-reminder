@@ -94,8 +94,46 @@
                     </StackPanel>
 
                     <StackPanel Margin="0,12,0,0" Visibility="{Binding Idea, Converter={StaticResource VisibleIfText}}">
-                      <TextBlock Text="FOR EXAMPLE" Style="{StaticResource Caption}" FontWeight="SemiBold" />
-                      <TextBlock Text="{Binding Idea}" FontSize="15" TextWrapping="Wrap" Margin="0,2,0,0" />
+                      <TextBlock Text="{Binding IdeaLabel}" Style="{StaticResource Caption}" FontWeight="SemiBold" />
+                      <DockPanel Margin="0,2,0,0">
+                        <Button DockPanel.Dock="Right" Content="Steps" Click="RecipeSteps_Click" Padding="12,4" Margin="10,0,0,0" VerticalAlignment="Center"
+                                Visibility="{Binding HasRecipe, Converter={StaticResource VisibleIf}}" />
+                        <TextBlock Text="{Binding Idea}" FontSize="15" TextWrapping="Wrap" VerticalAlignment="Center" />
+                      </DockPanel>
+                    </StackPanel>
+
+                    <!-- Something else from what's in the kitchen: Claude's ideas, one picked to have instead. -->
+                    <StackPanel Margin="0,10,0,0" Visibility="{Binding CanAskClaude, Converter={StaticResource VisibleIf}}">
+                      <Button Click="AskIdeas_Click" IsEnabled="{Binding CanAsk}" Padding="12,5" HorizontalAlignment="Left"
+                              ToolTip="Claude suggests three other meals from what's in your kitchen">
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="&#xE945;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                          <TextBlock Text="Other ideas from my kitchen" />
+                        </StackPanel>
+                      </Button>
+                      <TextBlock Text="{Binding IdeasText}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                 Visibility="{Binding IdeasText, Converter={StaticResource VisibleIfText}}" />
+                      <ItemsControl ItemsSource="{Binding Ideas}" Focusable="False" Margin="0,6,0,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate DataType="{x:Type local:AlarmIdea}">
+                            <Border CornerRadius="8" Background="{DynamicResource SubtleFillColorSecondaryBrush}" Padding="12,9" Margin="0,0,0,6">
+                              <Grid>
+                                <Grid.ColumnDefinitions>
+                                  <ColumnDefinition Width="*" />
+                                  <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,12,0">
+                                  <TextBlock Text="{Binding Idea.Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                  <TextBlock Text="{Binding Idea.Why}" TextWrapping="Wrap" />
+                                  <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Have this" Click="HaveIdea_Click" VerticalAlignment="Center" Padding="14,6"
+                                        Style="{StaticResource ColorButton}" Background="{Binding Item.Kind, Converter={StaticResource KindBrush}}" />
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Visibility="{Binding IsInjection, Converter={StaticResource VisibleIf}}">
@@ -124,6 +162,9 @@
                   </StackPanel>
 
                   <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,18,0,0" HorizontalAlignment="Right">
+                    <Button Content="Something else…" Click="SomethingElse_Click" Margin="0,0,8,0" Padding="16,8"
+                            Visibility="{Binding IsMeal, Converter={StaticResource VisibleIf}}"
+                            ToolTip="Had something else, like fast food: log it, and this meal counts as eaten" />
                     <Button Content="Skip" Click="Skip_Click" Margin="0,0,8,0" Padding="16,8" />
                     <Button Content="{Binding SnoozeText}" Click="Snooze_Click" Margin="0,0,8,0" Padding="16,8" />
                     <Button Content="{Binding DoneText}" Style="{StaticResource ColorButton}" Background="{Binding Kind, Converter={StaticResource KindBrush}}"

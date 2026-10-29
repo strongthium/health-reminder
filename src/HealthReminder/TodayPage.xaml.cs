@@ -145,6 +145,35 @@ public sealed partial class TodayPage : UserControl, IPage
         var kitchen = KitchenLog.AlertsOn ? KitchenLog.Events(now.Date, now.Date.AddDays(1).AddTicks(-1)) : [];
         KitchenList.ItemsSource = kitchen.Select(e => new KitchenRow(e, KitchenLog.IsDone(e), now)).ToList();
         KitchenCard.Show(kitchen.Count > 0);
+
+        // The day so far, against the week before it.
+        var days = FoodLog.Days(today.AddDays(-9), now);
+        var notes = DailyStats.Notes(days, app.Database.Smokes(now.Date.AddDays(-9)), now, SmokeLog.TargetToday());
+        NoteList.ItemsSource = notes.Take(3).Select(n => new NoteRow(n)).ToList();
+        NoteCard.Show(notes.Count > 0);
+
+        var food = FoodLog.Since(now.Date);
+        FoodList.ItemsSource = food.Select(f => new FoodRow(f)).ToList();
+        FoodList.Show(food.Count > 0);
+        var tally = days[^1];
+        FoodTitle.Text = tally.Kcal > 0 ? $"About {tally.Kcal:N0} kcal eaten today" : "Eaten today";
+        FoodDetail.Text = (tally.Kcal > 0 ? "From the meals marked eaten and the food logged" : "Nothing logged yet")
+            + (tally.KcalPlanned > 0 ? $"; the plan is {tally.KcalPlanned:N0} kcal." : ".")
+            + (food.Count == 0 ? " Fast food, a snack or something from the kitchen: log it here, and what it uses comes off the kitchen." : "");
+    }
+
+    private void Stats_Click(object sender, RoutedEventArgs e) => this.MainWindowOf().Navigate(MainWindow.StatsPage);
+
+    private void LogFood_Click(object sender, RoutedEventArgs e)
+    {
+        if (new FoodWindow { Owner = this.MainWindowOf() }.ShowDialog() == true) App.Current.Changed();
+    }
+
+    private void RemoveFood_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not FoodRow row) return;
+        FoodLog.Remove(row.Food);
+        App.Current.Changed();
     }
 
     private void Exercise_Click(object sender, RoutedEventArgs e)
@@ -199,4 +228,15 @@ public sealed class KitchenRow(KitchenEvent e, bool done, DateTime now)
     public bool Done => done;
     public bool HasSteps => e.Meal.Recipe is not null && e.Step is KitchenStep.Prep or KitchenStep.Cook;
     public double Opacity => done || e.At < now.AddHours(-3) ? 0.6 : 1;
+}
+
+/// <summary>Food logged today: when, what and how much, and about how many kcal.</summary>
+public sealed class FoodRow(FoodEaten food)
+{
+    public FoodEaten Food => food;
+    public string Time => Format.Time(food.At);
+    public string Name => food.Name;
+    public string Detail => string.Join(" · ", new[] { food.Amount is { Length: > 0 } a && a != "1" ? a : "", food.Pantry is not null ? "from the kitchen" : "eaten out",
+        food.Meal is not null ? "in place of a meal" : "" }.Where(s => s.Length > 0));
+    public string Kcal => food.Kcal > 0 ? $"{food.Kcal:N0} kcal" : "kcal not known";
 }

@@ -46,10 +46,14 @@ public sealed class Schedule(Database database)
     }
 
     /// <summary>Today's doses and what became of each, in order.</summary>
-    public List<ScheduledDose> Day(IEnumerable<Reminder> reminders, DateTime now)
+    public List<ScheduledDose> Day(IEnumerable<Reminder> reminders, DateTime now) => Days(reminders, now.Date, now);
+
+    /// <summary>The doses of the days from <paramref name="first"/> to today and what became of each, in order. The
+    /// reminders are as they are now: one deleted or changed since isn't counted as it was.</summary>
+    public List<ScheduledDose> Days(IEnumerable<Reminder> reminders, DateTime first, DateTime now)
     {
-        var logged = database.LoggedSince(now.Date);
-        var doses = Doses(reminders, now.Date, now.Date).ToList();
+        var logged = database.LoggedSince(first.Date);
+        var doses = Doses(reminders, first.Date, now.Date).ToList();
         return doses
             .Where(d => d.Due >= Since(d.Reminder))
             .OrderBy(d => d.Due).ThenBy(d => d.Reminder.Kind).ThenBy(d => d.Reminder.Name, StringComparer.CurrentCultureIgnoreCase)
