@@ -53,12 +53,15 @@ public static partial class Calories
         (["bread", "loaf", "toast"], new(265, 80, 30)), (["bagel"], new(250, 270)), (["bun", "roll"], new(280, 120)),
         (["tortilla", "wrap"], new(300, 140)), (["english muffin"], new(230, 130)), (["muffin"], new(380, 400)), (["pancake"], new(230, 90)),
         (["waffle"], new(290, 95)), (["croissant"], new(406, 230)), (["donut", "doughnut"], new(420, 260)), (["cookie"], new(480, 80)),
-        (["cake"], new(370, 350)), (["pie"], new(260, 500)),
+        (["cake"], new(370, 350)), (["pie"], new(260, 500)), (["meat pie", "pot pie", "tourtiere", "tourtière"], new(270, 540, 200)),
+        // Meals
+        (["fries", "french fries", "wedges", "tater tots"], new(160, 0, 85)), (["hash brown", "hash browns"], new(150, 0, 85)),
+        (["hash brown patty", "hash brown patties"], new(210, 130)), (["ravioli", "tortellini"], new(250, 0, 200)),
         // Drinks
         (["juice"], new(45, 0, 250)), (["pop", "soda", "cola", "coke", "pepsi", "sprite", "ginger ale", "root beer"], new(42, 150, 355)),
         (["beer"], new(43, 150, 355)), (["wine"], new(83, 0, 150)), (["coffee", "tea"], new(2, 0, 250)), (["water"], new(0, 0, 500)),
         // Dry goods
-        (["rice"], new(360, 0, 60)), (["pasta", "spaghetti", "macaroni", "noodle", "penne"], new(370, 0, 85)), (["oat", "oatmeal"], new(380, 0, 40)),
+        (["rice"], new(360, 0, 60)), (["pasta", "spaghetti", "macaroni", "noodle", "penne", "rotini", "fusilli", "linguine", "fettuccine", "elbows", "farfalle", "bow ties", "rigatoni"], new(370, 0, 85)), (["oat", "oatmeal"], new(380, 0, 40)),
         (["cereal"], new(380, 0, 40)), (["granola"], new(470, 0, 50)), (["granola bar"], new(430, 120)), (["flour"], new(364, 0, 30)), (["sugar"], new(387, 0, 10)),
         (["cracker"], new(440, 0, 30)), (["chip", "crisp"], new(536, 0, 30)), (["popcorn"], new(390, 0, 30)), (["chocolate"], new(535, 230, 45)),
         (["almond", "nut", "peanut"], new(580, 0, 30)), (["peanut butter"], new(590, 0, 32)), (["jam", "honey", "syrup"], new(280, 0, 20)),

@@ -52,6 +52,9 @@ internal static class FoodIcons
         ["croissant"] = Rgb(0xE0, 0xA0, 0x45), ["tortilla"] = Rgb(0xF0, 0xDD, 0xB0), ["muffin"] = Rgb(0x4F, 0xA3, 0xE0), ["donut"] = Rgb(0xF4, 0x9A, 0xC1),
         ["pancakes"] = Rgb(0xE0, 0xA4, 0x5A), ["cake"] = Rgb(0xF4, 0x9A, 0xC1), ["pie"] = Rgb(0xC0, 0x39, 0x2B), ["soup"] = Rgb(0xE0, 0x7B, 0x39),
         ["chocolate"] = Rgb(0xC6, 0x28, 0x28), ["popcorn"] = Rgb(0xD3, 0x2F, 0x2F),
+        ["meatpie"] = Rgb(0xD9, 0xA0, 0x5B), ["fries"] = Rgb(0xD3, 0x2F, 0x2F), ["hashbrown"] = Rgb(0xD9, 0x9A, 0x3A), ["hashbrowns"] = Rgb(0xE3, 0xAC, 0x4C),
+        ["pastaplate"] = Rgb(0xF0, 0xC8, 0x6A), ["spaghetti"] = Rgb(0xF0, 0xC8, 0x6A), ["elbow"] = Rgb(0xF0, 0xC8, 0x6A), ["penne"] = Rgb(0xF0, 0xC8, 0x6A),
+        ["rotini"] = Rgb(0xF0, 0xC8, 0x6A), ["shells"] = Rgb(0xF0, 0xC8, 0x6A), ["bowtie"] = Rgb(0xF0, 0xC8, 0x6A),
         ["Fridge"] = Rgb(0x5E, 0x9E, 0xD6), ["Freezer"] = Rgb(0x4F, 0xA3, 0xE0), ["Pantry"] = Rgb(0xC6, 0x8B, 0x4E),
         ["Cupboard"] = Rgb(0xA1, 0x88, 0x7F), ["Counter"] = Rgb(0x90, 0xA4, 0xAE),
     };
@@ -90,6 +93,8 @@ internal static class FoodIcons
         void Round(Brush? fill, double x, double y, double r, Pen? pen = null) => context.DrawEllipse(fill, pen ?? Outline, new Point(x, y), r, r);
         void Oval(Brush? fill, double x, double y, double rx, double ry, Pen? pen = null) => context.DrawEllipse(fill, pen ?? Outline, new Point(x, y), rx, ry);
         void Gleam(string data) => Path(null, data, RoundPen(Shine, 5));
+        // Path data made with numbers in it, written the same in every language ("2.5", not "2,5").
+        static string P(FormattableString data) => FormattableString.Invariant(data);
 
         switch (icon)
         {
@@ -668,6 +673,154 @@ internal static class FoodIcons
                 Oval(t, 50, 46, 44, 10);
                 Round(Leaf, 38, 46, 3, None);
                 Round(l, 58, 44, 3, None);
+                break;
+
+            case "meatpie":
+                // A closed pie in its foil dish, steaming, with slits in its crust.
+                Path(null, "M 36,24 C 30,18 40,12 34,4", RoundPen(Grey, 4));
+                Path(null, "M 58,24 C 52,18 62,12 56,4", RoundPen(Grey, 4));
+                Path(Silver, "M 6,58 L 14,80 C 22,92 78,92 86,80 L 94,58 Z");
+                foreach (var x in new[] { 24.0, 38, 52, 66, 80 }) Line(x - 1, 72, x, 86, new Pen(Grey, 2));
+                Oval(l, 50, 58, 46, 15);
+                Path(t, "M 12,58 C 14,28 86,28 88,58 C 70,66 30,66 12,58 Z");
+                foreach (var (x1, y1, x2, y2) in new[] { (36.0, 42.0, 41.0, 51.0), (50, 40, 50, 51), (64, 42, 59, 51) }) Line(x1, y1, x2, y2, RoundPen(d, 3.5));
+                foreach (var x in new[] { 16.0, 27, 38, 50, 62, 73, 84 }) Round(d, x, 58 + 11 * Math.Sqrt(1 - Math.Pow((x - 50) / 46, 2)), 2, None);
+                Gleam("M 22,50 Q 26,40 38,36");
+                break;
+
+            case "fries":
+                Path(d, "M 16,32 C 30,38 70,38 84,32 L 82,52 L 18,52 Z");
+                foreach (var (x, a, h) in new[] { (30.0, -14.0, 40.0), (40, -6, 46), (50, 2, 50), (60, 8, 44), (70, 15, 40), (45, -3, 36), (56, 5, 34) })
+                {
+                    context.PushTransform(new RotateTransform(a, x, 50));
+                    Box(Chip, x - 4.5, 50 - h, 9, h + 6, 2);
+                    context.Pop();
+                }
+                Path(t, "M 16,44 Q 50,62 84,44 L 74,94 L 26,94 Z");
+                Gleam("M 25,60 L 29,84");
+                break;
+
+            case "hashbrown":
+                // A patty: shredded potato pressed flat and browned.
+                Path(d, "M 6,46 L 6,60 Q 6,74 20,74 L 80,74 Q 94,74 94,60 L 94,46 Z");
+                Path(t, "M 20,26 L 80,26 Q 94,26 94,40 L 94,48 Q 94,62 80,62 L 20,62 Q 6,62 6,48 L 6,40 Q 6,26 20,26 Z");
+                foreach (var (x1, y1, x2, y2, light) in new[]
+                {
+                    (14.0, 38.0, 24.0, 34.0, true), (28, 32, 38, 35, false), (44, 33, 54, 30, true), (60, 32, 70, 35, false), (74, 36, 84, 33, true),
+                    (16, 48, 26, 51, false), (30, 44, 40, 41, true), (46, 45, 56, 48, false), (62, 44, 72, 41, true), (76, 47, 86, 50, false),
+                    (22, 56, 32, 54, true), (38, 54, 48, 57, true), (54, 56, 64, 53, false), (68, 55, 78, 57, true),
+                })
+                    Line(x1, y1, x2, y2, RoundPen(light ? l : d, 2.5));
+                break;
+
+            case "hashbrowns":
+                // Diced potato, in a pile of little cubes, from the back.
+                foreach (var (x, y) in new[] { (40, 40), (62, 42), (28, 56), (50, 58), (72, 56), (18, 72), (40, 74), (62, 74), (82, 70) })
+                {
+                    Path(l, P($"M {x},{y - 10} L {x + 10},{y - 5} L {x},{y} L {x - 10},{y - 5} Z"));
+                    Path(t, P($"M {x - 10},{y - 5} L {x},{y} L {x},{y + 10} L {x - 10},{y + 5} Z"));
+                    Path(d, P($"M {x},{y} L {x + 10},{y - 5} L {x + 10},{y + 5} L {x},{y + 10} Z"));
+                }
+                break;
+
+            case "pastaplate":
+                Oval(Silver, 50, 66, 47, 22);
+                Oval(White, 50, 64, 36, 15, None);
+                Path(t, "M 20,64 C 18,44 34,34 50,34 C 66,34 82,44 80,64 C 70,72 30,72 20,64 Z");
+                foreach (var data in new[] { "M 26,60 C 30,46 44,42 56,48", "M 34,65 C 40,53 58,51 72,59", "M 46,42 C 56,39 68,44 75,54", "M 25,52 C 33,41 49,37 60,39" })
+                    Path(null, data, RoundPen(d, 2.5));
+                Path(Red, "M 36,44 C 38,34 62,34 66,44 C 68,52 58,54 50,52 C 42,54 34,52 36,44 Z");
+                Round(Solid(0x7A, 0x45, 0x2A), 44, 43, 6);
+                Round(Solid(0x7A, 0x45, 0x2A), 58, 45, 5.5);
+                Path(Leaf, "M 48,36 Q 54,29 61,33 Q 55,39 48,36 Z", None);
+                break;
+
+            // ---- Pasta, dry, by its shape
+            case "spaghetti":
+                // A bundle tied in the middle.
+                context.PushTransform(new RotateTransform(-35, 50, 50));
+                Path(t, "M 2,36 L 40,45 L 60,45 L 98,36 L 98,64 L 60,55 L 40,55 L 2,64 Z");
+                foreach (var k in new[] { -1.0, -0.5, 0, 0.5, 1 })
+                {
+                    Line(5, 50 + k * 11, 40, 50 + k * 4, new Pen(d, 1.5));
+                    Line(60, 50 + k * 4, 95, 50 + k * 11, new Pen(d, 1.5));
+                }
+                Box(Red, 40, 42, 20, 16, 3);
+                context.Pop();
+                break;
+
+            case "elbow":
+                foreach (var (x, y, a) in new[] { (40.0, 50.0, -8.0), (60, 56, 172) })
+                {
+                    context.PushTransform(new RotateTransform(a, x, y));
+                    // A bent tube: 150° of a ring, open at one end.
+                    double ox = 31 * Math.Cos(330 * Math.PI / 180), oy = 31 * Math.Sin(330 * Math.PI / 180);
+                    double ix = 14 * Math.Cos(330 * Math.PI / 180), iy = 14 * Math.Sin(330 * Math.PI / 180);
+                    Path(t, P($"M {x - 31},{y} A 31,31 0 0 1 {x + ox},{y + oy} L {x + ix},{y + iy} A 14,14 0 0 0 {x - 14},{y} Z"));
+                    Path(null, P($"M {x - 24},{y - 9} A 26,26 0 0 1 {x - 9},{y - 24}"), RoundPen(Shine, 4));
+                    Oval(d, x - 22.5, y, 8, 3.6);
+                    context.Pop();
+                }
+                break;
+
+            case "penne":
+                foreach (var (x, y, a) in new[] { (42.0, 30.0, -20.0), (58, 54, 15), (40, 76, -30) })
+                {
+                    context.PushTransform(new RotateTransform(a, x, y));
+                    Path(t, P($"M {x - 26},{y - 9} L {x + 16},{y - 9} L {x + 26},{y + 9} L {x - 16},{y + 9} Z"));
+                    foreach (var dy in new[] { -4.0, 0, 4 }) Line(x - 17 + dy, y + dy, x + 17 + dy, y + dy, new Pen(d, 1.5));
+                    // Cut at a slant: its open end is an oval along the cut.
+                    context.PushTransform(new RotateTransform(61, x + 21, y));
+                    Oval(d, x + 21, y, 10, 4);
+                    context.Pop();
+                    context.Pop();
+                }
+                break;
+
+            case "rotini":
+                foreach (var (x, y, a) in new[] { (50.0, 32.0, -25.0), (50, 68, 18) })
+                {
+                    context.PushTransform(new RotateTransform(a, x, y));
+                    var body = new RectangleGeometry(new Rect(x - 38, y - 12, 76, 24), 12, 12);
+                    context.DrawGeometry(t, null, body);
+                    context.PushClip(body);
+                    for (var k = -44.0; k <= 40; k += 12)
+                    {
+                        Path(null, P($"M {x + k},{y + 13} C {x + k + 9},{y + 4} {x + k - 1},{y - 4} {x + k + 8},{y - 13}"), RoundPen(d, 3.5));
+                        Path(null, P($"M {x + k + 5},{y + 13} C {x + k + 14},{y + 4} {x + k + 4},{y - 4} {x + k + 13},{y - 13}"), RoundPen(l, 2.5));
+                    }
+                    context.Pop();
+                    context.DrawGeometry(null, Outline, body);
+                    context.Pop();
+                }
+                break;
+
+            case "shells":
+                foreach (var (x, y, a) in new[] { (34.0, 34.0, -15.0), (68, 46, 25), (44, 72, 5) })
+                {
+                    context.PushTransform(new TranslateTransform(x, y));
+                    context.PushTransform(new RotateTransform(a));
+                    Path(t, "M -24,4 C -26,-16 -4,-24 14,-16 C 26,-10 26,6 18,14 C 6,22 -16,20 -24,4 Z");
+                    foreach (var data in new[] { "M -20,8 C -20,-6 -10,-14 2,-16", "M -12,14 C -12,0 -4,-8 6,-10", "M -4,16 C -2,6 2,0 8,-2" })
+                        Path(null, data, new Pen(d, 2));
+                    Path(d, "M 6,0 C 10,-8 20,-6 20,2 C 18,10 10,10 6,6 Z", None);
+                    context.Pop();
+                    context.Pop();
+                }
+                break;
+
+            case "bowtie":
+                foreach (var mirror in new[] { 1.0, -1 })
+                {
+                    context.PushTransform(new ScaleTransform(mirror, 1, 50, 50));
+                    Path(t, "M 50,44 L 14,20 L 7,27 L 13,34 L 7,41 L 13,48 L 7,55 L 13,62 L 7,69 L 13,76 L 14,80 L 50,56 Z");
+                    foreach (var data in new[] { "M 42,47 C 34,40 26,34 18,30", "M 40,50 C 32,50 24,50 16,50", "M 42,53 C 34,60 26,66 18,70" })
+                        Path(null, data, new Pen(d, 2));
+                    context.Pop();
+                }
+                Oval(l, 50, 50, 8, 13);
+                Line(47, 42, 47, 58, new Pen(d, 2));
+                Line(53, 42, 53, 58, new Pen(d, 2));
                 break;
 
             case "chocolate":

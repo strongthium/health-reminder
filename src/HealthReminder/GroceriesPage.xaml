@@ -8,9 +8,29 @@
       <StackPanel Margin="36,28,36,28" MaxWidth="1000">
         <StackPanel Margin="0,0,0,16">
           <TextBlock Text="Groceries" Style="{StaticResource PageTitle}" />
-          <TextBlock x:Name="SummaryText" Style="{StaticResource Muted}" FontSize="14" Margin="0,2,0,0" />
+          <TextBlock x:Name="SummaryText" Style="{StaticResource Muted}" FontSize="14" Margin="0,2,0,0" TextWrapping="Wrap" />
+          <!-- Search: the list, the cart and the kitchen show only what matches. -->
+          <Grid Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" MaxWidth="460" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchBox" TextChanged="Search_Changed" KeyDown="Search_KeyDown" Padding="34,6,30,6"
+                     ToolTip="Shows only what matches, on the list and in the kitchen: a name or a brand. Esc clears it." />
+            <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <TextBlock Text="Search groceries and kitchen" Style="{StaticResource Muted}" IsHitTestVisible="False" Margin="35,0,0,0" VerticalAlignment="Center"
+                       Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource VisibleIf}}" />
+            <Button x:Name="ClearSearch" Style="{StaticResource Bare}" Click="ClearSearch_Click" HorizontalAlignment="Right" Padding="8,4" Margin="0,0,3,0"
+                    VerticalAlignment="Center" ToolTip="Show everything" Visibility="Collapsed">
+              <TextBlock Text="&#xE711;" Style="{StaticResource Icon}" FontSize="11" />
+            </Button>
+          </Grid>
         </StackPanel>
-  
+
+        <Border x:Name="NoMatch" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,12" Visibility="Collapsed">
+          <TextBlock x:Name="NoMatchText" Style="{StaticResource Muted}" TextWrapping="Wrap" />
+        </Border>
+
         <!-- Adding -->
         <Border Style="{StaticResource Card}" Padding="20,16">
           <StackPanel>

@@ -288,6 +288,13 @@ public sealed partial class GroceriesPage : UserControl, IPage
             KeepOpen();
             (openName, selecting) = (null, false);
             picked.Clear();
+            SearchBox.Text = "";
+        };
+        searchWait.Tick += (_, _) =>
+        {
+            searchWait.Stop();
+            KeepOpen();
+            Redraw();
         };
     }
 
@@ -304,18 +311,21 @@ public sealed partial class GroceriesPage : UserControl, IPage
     {
         var system = App.Measures;
         var items = App.Database.Groceries();
-        var toBuy = items.Where(i => i.Bought is null).Select(i => new GroceryRow(i, App.Database.LastBought(i.Name), system)).ToList();
-        var bought = items.Where(i => i.Bought is not null).Select(i => new GroceryRow(i, null, system)).ToList();
+        var toBuyAll = items.Where(i => i.Bought is null).ToList();
+        var boughtAll = items.Where(i => i.Bought is not null).ToList();
+        var toBuy = toBuyAll.Where(i => Matches(i.Name)).Select(i => new GroceryRow(i, App.Database.LastBought(i.Name), system)).ToList();
+        var bought = boughtAll.Where(i => Matches(i.Name)).Select(i => new GroceryRow(i, null, system)).ToList();
         ToBuyList.ItemsSource = toBuy;
         BoughtList.ItemsSource = bought;
         ToBuyPanel.Show(toBuy.Count > 0);
         BoughtPanel.Show(bought.Count > 0);
-        Empty.Show(items.Count == 0);
-        ToBuyCount.Text = toBuy.Count.ToString(CultureInfo.CurrentCulture);
-        var total = bought.Sum(b => b.Item.Price ?? 0);
-        TotalText.Text = bought.Count + (total > 0 ? " · " + total.ToString("C", CultureInfo.CurrentCulture) : "");
+        Empty.Show(items.Count == 0 && !Searching);
+        ToBuyCount.Text = Searching ? $"{toBuy.Count} of {toBuyAll.Count}" : toBuy.Count.ToString(CultureInfo.CurrentCulture);
+        var total = boughtAll.Sum(b => b.Price ?? 0);
+        TotalText.Text = (Searching ? $"{bought.Count} of {boughtAll.Count}" : boughtAll.Count.ToString(CultureInfo.CurrentCulture))
+            + (total > 0 ? " · " + total.ToString("C", CultureInfo.CurrentCulture) : "");
         SummaryText.Text = items.Count == 0 ? "What to buy, and what it cost"
-            : $"{toBuy.Count} to buy" + (bought.Count > 0 ? $" · {bought.Count} in the cart" : "") + (total > 0 ? $" · {total.ToString("C", CultureInfo.CurrentCulture)} so far" : "");
+            : $"{toBuyAll.Count} to buy" + (boughtAll.Count > 0 ? $" · {boughtAll.Count} in the cart" : "") + (total > 0 ? $" · {total.ToString("C", CultureInfo.CurrentCulture)} so far" : "");
         var typed = NameBox.Text;
         NameBox.ItemsSource = App.Database.GroceryNames();
         NameBox.Text = typed;
@@ -323,11 +333,63 @@ public sealed partial class GroceriesPage : UserControl, IPage
 
         ShowKitchen(system);
         ShowCheckTime();
+        ClearSearch.Show(Searching);
+        NoMatch.Show(Searching && toBuy.Count + bought.Count + kitchenShown == 0);
+        NoMatchText.Text = $"Nothing on the list or in the kitchen matches “{SearchBox.Text.Trim()}”. To add it, type it under What.";
         PhotosButton.IsEnabled = App.ClaudeOn && !reading;
         if (!reading && !FoundPanel.IsVisible)
             PhotosText.Text = App.ClaudeOn
                 ? "Photos of your fridge, cupboard, groceries or a receipt: Claude lists what's in them."
                 : "To add groceries from photos, turn on Help from Claude in Settings.";
+    }
+
+    // ---- Search -----------------------------------------------------------------------------------------------
+
+    private readonly System.Windows.Threading.DispatcherTimer searchWait = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private int kitchenShown;
+
+    private bool Searching => SearchBox.Text.Trim().Length > 0;
+
+    /// <summary>The words for each picture: its kind and what it shows ("Pasta", "Elbow macaroni").</summary>
+    private static readonly Dictionary<string, string> PictureWords =
+        Foods.IconSections.SelectMany(s => s.Icons.Select(i => (i.Key, Words: s.Section + " " + i.Label))).ToDictionary(i => i.Key, i => i.Words);
+
+    /// <summary>Whether every word searched for is in a name (or its brand), or starts a word of what kind of food it is:
+    /// "pep" finds Pepsi and Red peppers, "diet pep" just Diet Pepsi, "pasta" the spaghetti and the rotini, and "meat"
+    /// what's in Meat &amp; fish.</summary>
+    private bool Matches(string name, string? note, FoodGroup group, string icon)
+    {
+        var text = name + " " + note;
+        var kind = (Foods.Name(group) + " " + PictureWords.GetValueOrDefault(icon)).Split([' ', '&'], StringSplitOptions.RemoveEmptyEntries);
+        return SearchBox.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .All(word => text.Contains(word, StringComparison.CurrentCultureIgnoreCase)
+                || kind.Any(k => k.StartsWith(word, StringComparison.CurrentCultureIgnoreCase)));
+    }
+
+    private bool Matches(string name)
+    {
+        var look = Foods.Guess(name);
+        return Matches(name, null, look.Group, look.Icon);
+    }
+
+    /// <summary>Shown as it's typed, once typing pauses.</summary>
+    private void Search_Changed(object sender, TextChangedEventArgs e)
+    {
+        searchWait.Stop();
+        searchWait.Start();
+    }
+
+    private void Search_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || !Searching) return;
+        e.Handled = true;
+        SearchBox.Text = "";
+    }
+
+    private void ClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Text = "";
+        SearchBox.Focus();
     }
 
     // ---- From photos ------------------------------------------------------------------------------------------
@@ -428,16 +490,19 @@ public sealed partial class GroceriesPage : UserControl, IPage
             row.PropertyChanged += Row_PropertyChanged;
         }
         var placeOf = rows.ToDictionary(r => r, r => Pantry.PlaceOf(r.Item, places).Id);
-        var closed = ClosedPlaces();
+        // Searching, only what matches is shown, in every place it's in, closed or not.
+        var shown = rows.Where(r => Matches(r.Name, r.Note, r.Item.ShownGroup, r.Item.ShownIcon)).ToList();
+        var closed = Searching ? new HashSet<long>() : ClosedPlaces();
         KitchenList.ItemsSource = places
             .Select(place => new PlaceSection(place,
-                rows.Where(r => placeOf[r] == place.Id)
+                shown.Where(r => placeOf[r] == place.Id)
                     .GroupBy(r => r.Item.ShownGroup).OrderBy(g => g.Key)
                     .Select(g => new GroupSection(Foods.Name(g.Key), g.ToList(), selecting))
                     .ToList(),
                 !closed.Contains(place.Id)))
             .Where(s => s.Groups.Count > 0)
             .ToList();
+        kitchenShown = shown.Count;
         PlaceList.ItemsSource = places.Select((place, i) => new PlaceRow(place, placeOf.Values.Count(id => id == place.Id), i == 0, i == places.Count - 1, places.Count == 1)).ToList();
         if (NewPlaceKind.ItemsSource is null)
         {
@@ -450,7 +515,9 @@ public sealed partial class GroceriesPage : UserControl, IPage
         sorting = false;
         NoKitchen.Show(rows.Count == 0);
         var doubt = rows.Count(r => r.InDoubt);
-        KitchenSummary.Text = rows.Count == 0 ? "" : $"{rows.Count} things" + (doubt > 0 ? $" · {doubt} to check" : "");
+        KitchenSummary.Text = rows.Count == 0 ? ""
+            : Searching ? $"{shown.Count} of {rows.Count} things"
+            : $"{rows.Count} things" + (doubt > 0 ? $" · {doubt} to check" : "");
         SelectButtonText.Text = selecting ? "Done picking" : "Pick";
         ShowPicked();
     }
@@ -844,10 +911,35 @@ public sealed partial class GroceriesPage : UserControl, IPage
             NameBox.Focus();
             return;
         }
-        PantryLog.Bought(name, QuantityBox.Text.Trim());
+        if (PutAway(name, QuantityBox.Text.Trim()) is not { } place) return;
         NameBox.Text = "";
         QuantityBox.Text = "";
         Redraw();
+        if (place.Length > 0) QuantityHint.Text = $"Added {name} to {place}.";
+    }
+
+    /// <summary>
+    /// Into the kitchen, by hand. What's there already is added to where it is. What's new goes where it was put the last
+    /// time it was new, or else where it's said to go, asked first; null when that's cancelled. The place's name, or ""
+    /// when it isn't kept track of.
+    /// </summary>
+    private string? PutAway(string name, string quantity)
+    {
+        if (!Pantry.Tracked(name)) return "";
+        if (PantryLog.Have(name))
+        {
+            PantryLog.Bought(name, quantity);
+            return Pantry.PlaceOf(PantryLog.Items().First(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)), PantryLog.Places()).Name;
+        }
+        if (PantryLog.PutBefore(name) is { } before)
+        {
+            PantryLog.PutAway(name, quantity, before.Place, before.Group);
+            return before.Place.Name;
+        }
+        var dialog = new WhereWindow(PantryLog.New(name, quantity), PantryLog.Places(), App.Measures) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true || dialog.Place is not { } place) return null;
+        PantryLog.PutAway(name, quantity, place, dialog.Group);
+        return place.Name;
     }
 
     private bool showingCheck;
@@ -910,12 +1002,12 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void Bought_Click(object sender, RoutedEventArgs e)
     {
         if (RowOf(sender) is not { } row || !row.TryReadPrice(out var price)) return;
+        // Into the kitchen's stock first: asked where, when it's new there, it isn't bought until that's said.
+        if (PutAway(row.Item.Name, row.QuantityText.Trim()) is null) return;
         row.Item.Quantity = row.QuantityText.Trim();
         row.Item.Price = price;
         row.Item.Bought = DateTime.Now;
         App.Database.Save(row.Item);
-        // Into the kitchen's stock.
-        PantryLog.Bought(row.Item.Name, row.Item.Quantity);
         Redraw();
     }
 

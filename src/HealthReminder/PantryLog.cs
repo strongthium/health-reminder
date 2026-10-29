@@ -47,6 +47,35 @@ internal static class PantryLog
         Database.Save(Pantry.Add(Find(name), name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, inFreezer, Cold));
     }
 
+    /// <summary>Whether there's something of that name in the kitchen already.</summary>
+    public static bool Have(string name) => Find(name) is not null;
+
+    /// <summary>Something new as it would go in, where its name says, to ask where it goes.</summary>
+    public static PantryItem New(string name, string quantity) => Pantry.Add(null, name.Trim(), quantity, DateTime.Now, cold: Cold);
+
+    private static string PutKey(string name) => "put:" + name.Trim().ToLowerInvariant();
+
+    /// <summary>Where something was put the last time it came in new, by hand: the place (while it's there) and the group.</summary>
+    public static (KitchenPlace Place, FoodGroup Group)? PutBefore(string name)
+    {
+        var saved = (Database.Setting(PutKey(name)) ?? "").Split('|');
+        if (saved.Length != 2 || !long.TryParse(saved[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+            || !Enum.TryParse<FoodGroup>(saved[1], out var group))
+            return null;
+        return Places().FirstOrDefault(p => p.Id == id) is { } place ? (place, group) : null;
+    }
+
+    /// <summary>Bought, new to the kitchen, and put in a place picked for it (frozen in a freezer, thawed out of one),
+    /// shown with a group; both are kept for the next time it's new.</summary>
+    public static void PutAway(string name, string quantity, KitchenPlace place, FoodGroup group)
+    {
+        if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
+        Database.SetSetting(PutKey(name), $"{place.Id.ToString(CultureInfo.InvariantCulture)}|{group}");
+        var now = DateTime.Now;
+        var item = Pantry.Move(Pantry.Add(Find(name), name.Trim(), quantity, now, cold: Cold), place, now, Cold);
+        Database.Save(item with { Group = group == item.Guess.Group ? null : group });
+    }
+
     /// <summary>Counted (or seen in a photo of where it's kept): this much there is now.</summary>
     public static void Counted(string name, string quantity, int useWithinDays = 0, bool unsure = false, bool inFreezer = false)
     {

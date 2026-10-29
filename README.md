@@ -119,7 +119,8 @@ last price per litre or kilogram.
 
 Your kitchen: a running stock that the meals you cook take off, by where it's kept and then by group, a line each with
 its picture, its brand, how much and its best-before. What's in doubt has a badge on its picture. A click on a line opens
-it, to change its name, brand, packs, place, group and dates there.
+it, to change its name, brand, packs, place, group and dates there. **Search** finds things on the list and in the
+kitchen, and something new put away by hand asks where it goes.
 
 <img src="docs/kitchen-picture.png" alt="Picking a thing's picture by kind, and its colour" width="60%">
 
@@ -402,6 +403,11 @@ cart, **Got it** takes the amount bought and, if you like, its price; the list t
 kilogram (or gallon or pound, or each), and next time the same thing is on the list, what it cost last time.
 **Done shopping** clears what's been bought; its prices are kept.
 
+**Search** at the top shows only what matches, on the list, in the cart and in the kitchen, every place opened: a name
+or a brand ("pep" finds Pepsi and red peppers, "diet pep" just Diet Pepsi), or the start of the kind of food it is
+("pasta" finds the spaghetti and the rotini, "meat" what's in meat and fish). **Esc** or the **✕** shows everything
+again.
+
 ### Your kitchen
 
 What's bought (**Got it**), what's in grocery photos, and what's added with **I have it** goes into **your kitchen**:
@@ -420,7 +426,13 @@ Where it goes and its
 group come from its name ("Coke" is a beverage in the pantry, "Garlic powder" a spice in the cupboard, "Frozen
 broccoli" a vegetable in the freezer, "Cheez Whiz" a spread in the fridge), and so does its picture: over seventy, from
 a pop can, a jug or a glass container to ground beef, a bagel or a pie, in the colour its name says (red for Coke,
-blue for Pepsi). **Places**
+blue for Pepsi). Meat pies, French fries, hash brown patties and diced hash browns have pictures of their own, and so
+does pasta by its shape: spaghetti, elbow macaroni, penne, rotini, shells and bow ties, and a plate of it made.
+
+**Put away by hand.** Something new to the kitchen, from **Got it** or **I have it**, asks where it goes first: a
+button for each place, the one its name says first in line (**Enter** takes it), and the group it's shown with. Next
+time it's new to the kitchen it goes where it was put without asking, and what's there already is added to where it
+is. **Cancel** puts nothing away, and leaves what was on the list still to buy. **Places**
 adds more and names them (a **Deep freezer** beside the fridge's freezer, a **Garage fridge**), orders them, and
 takes them away; what's in a place taken away goes where its kind goes. A place's heading folds it away.
 
