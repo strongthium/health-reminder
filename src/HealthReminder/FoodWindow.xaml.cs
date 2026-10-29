@@ -185,7 +185,7 @@ public sealed partial class FoodWindow : Window
         var meal = Meal;
         foreach (var line in eaten)
         {
-            if (line.Item is { } item) FoodLog.FromKitchen(item.Name, line.Amount, line.Kcal, now, meal?.Key);
+            if (line.Item is { } item) FoodLog.FromKitchen(item, line.Amount, line.Kcal, now, meal?.Key);
             else FoodLog.EatenOut(line.Name, line.Amount, line.Kcal, now, meal?.Key);
         }
         if (meal is not null) FoodLog.ForMeal(meal, now);

@@ -162,6 +162,13 @@ public sealed class PantryRow : INotifyPropertyChanged
 
     public string NameText { get; set; } = "";
     public string NoteText { get; set; } = "";
+    /// <summary>How much of it to make a thing of its own: a second bag.</summary>
+    public string SplitText { get; set; } = "";
+
+    /// <summary>How many others of its name there are, in its unit, to put together with it.</summary>
+    public int Others { get; set; }
+    public bool CanJoin => Others > 0;
+    public string JoinText => Others == 1 ? $"Put the other {Name} with it" : $"Put the other {Others} with it";
     public string AmountText { get; set; } = "";
     public string PacksText { get; set; } = "";
     public string WordText { get; set; } = "";
@@ -209,6 +216,7 @@ public sealed class PantryRow : INotifyPropertyChanged
     {
         NameText = Item.Name;
         NoteText = Item.Note ?? "";
+        SplitText = "";
         AmountText = Pantry.Show(Item, system);
         var packing = Item.Packing;
         PacksText = packing?.Packs is { } packs ? Amounts.Format(packs, "") : "";
@@ -286,7 +294,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
         {
             if (IsVisible) return;
             KeepOpen();
-            (openName, selecting) = (null, false);
+            (openId, selecting) = (null, false);
             picked.Clear();
             SearchBox.Text = "";
         };
@@ -303,7 +311,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
     /// <summary>Shown again, as it is now; not while something's typed, opened or picked here, which that would lose.</summary>
     public void Refresh()
     {
-        if (IsKeyboardFocusWithin && Keyboard.FocusedElement is TextBox || openName is not null || selecting) return;
+        if (IsKeyboardFocusWithin && Keyboard.FocusedElement is TextBox || openId is not null || selecting) return;
         Redraw();
     }
 
@@ -467,10 +475,10 @@ public sealed partial class GroceriesPage : UserControl, IPage
 
     // ---- The stock ----------------------------------------------------------------------------------------------
 
-    /// <summary>The line opened, by name; the names picked, while things are being picked.</summary>
-    private string? openName;
+    /// <summary>The line opened, and what's picked while things are being picked, by id: two of a name are two.</summary>
+    private long? openId;
     private bool selecting;
-    private readonly HashSet<string> picked = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<long> picked = [];
     private List<PantryRow> rows = [];
     private List<KitchenPlace> places = [];
 
@@ -481,12 +489,13 @@ public sealed partial class GroceriesPage : UserControl, IPage
         places = PantryLog.Places();
         var sort = PantryLog.Sort;
         rows = Pantry.Sorted(PantryLog.Items(), sort).Select(p => new PantryRow(p, system, now, places)).ToList();
-        picked.IntersectWith(rows.Select(r => r.Name));
+        picked.IntersectWith(rows.Select(r => r.Item.Id));
         foreach (var row in rows)
         {
-            row.Open = string.Equals(row.Name, openName, StringComparison.OrdinalIgnoreCase);
+            row.Open = row.Item.Id == openId;
             row.Selecting = selecting;
-            row.Selected = picked.Contains(row.Name);
+            row.Selected = picked.Contains(row.Item.Id);
+            row.Others = rows.Count(r => r != row && r.Item.Unit == row.Item.Unit && r.Name.Equals(row.Name, StringComparison.OrdinalIgnoreCase));
             row.PropertyChanged += Row_PropertyChanged;
         }
         var placeOf = rows.ToDictionary(r => r, r => Pantry.PlaceOf(r.Item, places).Id);
@@ -548,7 +557,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void PantrySet_Click(object sender, RoutedEventArgs e)
     {
         if (PantryRowOf(sender) is not { } row || row.Count.Trim().Length == 0) return;
-        PantryLog.Counted(row.Item.Name, row.Count);
+        PantryLog.Changed(PantryLog.Recounted(row.Item, row.Count));
         Redraw();
     }
 
@@ -599,7 +608,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
             return;
         }
         KeepOpen();
-        openName = row.Open ? null : row.Name;
+        openId = row.Open ? null : row.Item.Id;
         Redraw();
     }
 
@@ -610,13 +619,13 @@ public sealed partial class GroceriesPage : UserControl, IPage
         var moved = e.GetPosition(this) - pressedAt;
         if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         pressed = null;
-        var carried = row.Selected ? rows.Where(r => r.Selected).Select(r => r.Name).ToArray() : [row.Name];
-        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(string[]), carried), DragDropEffects.Move);
+        var carried = row.Selected ? rows.Where(r => r.Selected).Select(r => r.Item.Id).ToArray() : [row.Item.Id];
+        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(long[]), carried), DragDropEffects.Move);
     }
 
     private void Place_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(string[])) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Effects = e.Data.GetDataPresent(typeof(long[])) ? DragDropEffects.Move : DragDropEffects.None;
         if (sender is Border border && e.Effects == DragDropEffects.Move) border.SetResourceReference(Border.BorderBrushProperty, "AccentFillColorDefaultBrush");
         e.Handled = true;
     }
@@ -629,8 +638,8 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void Place_Drop(object sender, DragEventArgs e)
     {
         Place_DragLeave(sender, e);
-        if ((sender as FrameworkElement)?.DataContext is not PlaceSection section || e.Data.GetData(typeof(string[])) is not string[] names) return;
-        var moving = rows.Where(r => names.Contains(r.Name, StringComparer.OrdinalIgnoreCase)).Select(r => r.Item).ToList();
+        if ((sender as FrameworkElement)?.DataContext is not PlaceSection section || e.Data.GetData(typeof(long[])) is not long[] ids) return;
+        var moving = rows.Where(r => ids.Contains(r.Item.Id)).Select(r => r.Item).ToList();
         MoveTo(moving, section.Place);
     }
 
@@ -660,19 +669,42 @@ public sealed partial class GroceriesPage : UserControl, IPage
         var (packing, wrong) = row.PackingEdited ? Pantry.ReadPacking(row.PacksText, row.WordText, row.SizeText, row.OfPack, row.PerPackText) : (item.Packing, "");
         if (wrong.Length == 0) item = item with { Packing = packing };
         else problem = wrong;
+        // Another of the same name is fine: two bags of a thing are kept apart.
+        if (row.NameText.Trim() is { Length: > 0 } name) item = item with { Name = name };
         if (item != row.Item) PantryLog.Changed(item);
-        var name = row.NameText.Trim();
-        if (name.Length > 0 && name != item.Name)
+        if (item != row.Item || problem != row.Problem || row.NameText.Trim() != item.Name) row.Update(item, problem);
+    }
+
+    /// <summary>Part of it made a thing of its own, beside it: the second bag, which then shows open.</summary>
+    private void PantrySplit_Click(object sender, RoutedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row) return;
+        Keep(row);
+        if (PantryLog.Split(row.Item, row.SplitText, out var problem) is not { } part)
         {
-            if (PantryLog.Rename(item, name))
-            {
-                if (string.Equals(openName, item.Name, StringComparison.OrdinalIgnoreCase)) openName = name;
-                if (picked.Remove(item.Name)) picked.Add(name);
-                item = item with { Name = name };
-            }
-            else problem = $"Something else is called {name} already.";
+            row.Update(row.Item, problem);
+            return;
         }
-        if (item != row.Item || problem != row.Problem || name != item.Name) row.Update(item, problem);
+        openId = part.Id;
+        Redraw();
+        App.KitchenChanged();
+    }
+
+    private void PantrySplit_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        PantrySplit_Click(sender, e);
+    }
+
+    /// <summary>The others of its name, in its unit, put together with it as one.</summary>
+    private void PantryJoin_Click(object sender, RoutedEventArgs e)
+    {
+        if (PantryRowOf(sender) is not { } row) return;
+        Keep(row);
+        openId = PantryLog.Join(row.Item).Id;
+        Redraw();
+        App.KitchenChanged();
     }
 
     private void PantryField_LostFocus(object sender, RoutedEventArgs e)
@@ -692,7 +724,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
         if (PantryRowOf(sender) is not { } row) return;
         Keep(row);
         if (row.Problem.Length > 0) return;
-        openName = null;
+        openId = null;
         Redraw();
         App.KitchenChanged();
     }
@@ -752,15 +784,15 @@ public sealed partial class GroceriesPage : UserControl, IPage
     {
         selecting = !selecting;
         if (!selecting) picked.Clear();
-        else openName = null;
+        else openId = null;
         Redraw();
     }
 
     private void Row_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not PantryRow row || e.PropertyName != nameof(PantryRow.Selected)) return;
-        if (row.Selected) picked.Add(row.Name);
-        else picked.Remove(row.Name);
+        if (row.Selected) picked.Add(row.Item.Id);
+        else picked.Remove(row.Item.Id);
         ShowPicked();
     }
 
@@ -919,26 +951,36 @@ public sealed partial class GroceriesPage : UserControl, IPage
     }
 
     /// <summary>
-    /// Into the kitchen, by hand. What's there already is added to where it is. What's new goes where it was put the last
-    /// time it was new, or else where it's said to go, asked first; null when that's cancelled. The place's name, or ""
-    /// when it isn't kept track of.
+    /// Into the kitchen, by hand, the way it was put away the last time: where it went, and, with some of it there
+    /// already, whether it was kept apart (a bag of its own) or added to that. The first time, it's asked; null when
+    /// that's cancelled. The place's name, or "" when it isn't kept track of.
     /// </summary>
     private string? PutAway(string name, string quantity)
     {
         if (!Pantry.Tracked(name)) return "";
-        if (PantryLog.Have(name))
+        var have = PantryLog.Named(name);
+        var places = PantryLog.Places();
+        if (PantryLog.PutBefore(name) is { } before && (have.Count == 0 || before.Apart is not null))
         {
-            PantryLog.Bought(name, quantity);
-            return Pantry.PlaceOf(PantryLog.Items().First(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)), PantryLog.Places()).Name;
-        }
-        if (PantryLog.PutBefore(name) is { } before)
-        {
+            if (have.Count > 0 && before.Apart == false)
+            {
+                var into = have.FirstOrDefault(p => Pantry.PlaceOf(p, places).Id == before.Place.Id) ?? have[0];
+                PantryLog.PutAway(name, quantity, before.Place, before.Group, into);
+                return Pantry.PlaceOf(into, places).Name;
+            }
             PantryLog.PutAway(name, quantity, before.Place, before.Group);
             return before.Place.Name;
         }
-        var dialog = new WhereWindow(PantryLog.New(name, quantity), PantryLog.Places(), App.Measures) { Owner = Window.GetWindow(this) };
-        if (dialog.ShowDialog() != true || dialog.Place is not { } place) return null;
-        PantryLog.PutAway(name, quantity, place, dialog.Group);
+        var dialog = new WhereWindow(PantryLog.New(name, quantity), have, places, App.Measures) { Owner = Window.GetWindow(this) };
+        if (dialog.ShowDialog() != true) return null;
+        if (dialog.Into is { } some)
+        {
+            var there = Pantry.PlaceOf(some, places);
+            PantryLog.PutAway(name, quantity, there, dialog.Group, some, apart: false);
+            return there.Name;
+        }
+        if (dialog.Place is not { } place) return null;
+        PantryLog.PutAway(name, quantity, place, dialog.Group, apart: have.Count > 0 ? true : null);
         return place.Name;
     }
 

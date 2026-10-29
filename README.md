@@ -429,10 +429,16 @@ a pop can, a jug or a glass container to ground beef, a bagel or a pie, in the c
 blue for Pepsi). Meat pies, French fries, hash brown patties and diced hash browns have pictures of their own, and so
 does pasta by its shape: spaghetti, elbow macaroni, penne, rotini, shells and bow ties, and a plate of it made.
 
-**Put away by hand.** Something new to the kitchen, from **Got it** or **I have it**, asks where it goes first: a
-button for each place, the one its name says first in line (**Enter** takes it), and the group it's shown with. Next
-time it's new to the kitchen it goes where it was put without asking, and what's there already is added to where it
-is. **Cancel** puts nothing away, and leaves what was on the list still to buy. **Places**
+**Put away by hand.** What comes in with **Got it** or **I have it** asks, the first time, where it goes: a button
+for each place, the one its name says first in line (**Enter** takes it), and the group it's shown with. With some of
+it there already, it asks too whether to add it to that, or to keep it apart as a bag of its own: a 900 g bag and a
+1.5 kg one of the same thing are two lines, each with its own place and dates (**Enter** keeps what's weighed or
+poured apart, and adds what's counted, like eggs or cans). Next time it's put away the same way without asking.
+**Cancel** puts nothing away, and leaves what was on the list still to buy.
+
+**Two of a thing.** An opened line splits part of it off as a bag of its own (**Split it off**, with how much), or
+puts the others of its name back with it as one; either way, what's bought of it next time goes the same way. A recipe
+takes from the bag that's best used first, then the next. **Places**
 adds more and names them (a **Deep freezer** beside the fridge's freezer, a **Garage fridge**), orders them, and
 takes them away; what's in a place taken away goes where its kind goes. A place's heading folds it away.
 

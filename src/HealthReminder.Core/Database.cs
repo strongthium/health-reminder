@@ -11,8 +11,9 @@ public sealed class Database : IDisposable
 {
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
     // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs; 10: Claude's ideas picked for
-    // a meal; 11: food eaten, logged by hand. Tables of their own that the CREATE adds.
-    private const int SchemaVersion = 11;
+    // a meal; 11: food eaten, logged by hand; 12: the stock by id, so that two bags of a thing can be kept apart. Tables
+    // of their own that the CREATE adds.
+    private const int SchemaVersion = 12;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -135,7 +136,8 @@ public sealed class Database : IDisposable
                 amount      REAL NOT NULL              -- in the reminder's unit
             );
             CREATE TABLE IF NOT EXISTS pantry (
-                name    TEXT PRIMARY KEY COLLATE NOCASE,
+                id      INTEGER PRIMARY KEY,           -- two bags of one thing are two, of the same name
+                name    TEXT NOT NULL COLLATE NOCASE,
                 amount  REAL NOT NULL,                 -- in unit; below zero when more was used than was counted
                 unit    TEXT NOT NULL DEFAULT '',      -- the catalog's ("g", "egg"), or from the amount typed ("g", "mL", "")
                 use_by  TEXT,
@@ -201,6 +203,27 @@ public sealed class Database : IDisposable
         AddColumn("pantry", "size_unit", "TEXT");
         AddColumn("pantry", "size_of", "TEXT");             // 'each' piece, or a whole 'pack'
         AddColumn("pantry", "per_pack", "REAL");
+        // 12: things of the same name kept apart (a 900 g bag and a 1.5 kg one), each by an id of its own; and the food
+        // logged by the one it came from.
+        if (!HasColumn("pantry", "id"))
+        {
+            const string columns = "name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group, "
+                                 + "note, packs, pack_word, size, size_unit, size_of, per_pack";
+            // All or nothing: the stock is never left half copied.
+            Execute($"""
+                BEGIN;
+                CREATE TABLE pantry_kept (
+                    id INTEGER PRIMARY KEY, name TEXT NOT NULL COLLATE NOCASE, amount REAL NOT NULL, unit TEXT NOT NULL DEFAULT '',
+                    use_by TEXT, counted TEXT NOT NULL, unsure INTEGER NOT NULL DEFAULT 0, added TEXT, frozen TEXT,
+                    use_by_set INTEGER NOT NULL DEFAULT 0, place INTEGER, icon TEXT, color TEXT, food_group TEXT,
+                    note TEXT, packs REAL, pack_word TEXT, size REAL, size_unit TEXT, size_of TEXT, per_pack REAL);
+                INSERT INTO pantry_kept ({columns}) SELECT {columns} FROM pantry ORDER BY name COLLATE NOCASE;
+                DROP TABLE pantry;
+                ALTER TABLE pantry_kept RENAME TO pantry;
+                COMMIT;
+                """);
+        }
+        AddColumn("food_log", "pantry_id", "INTEGER");
         if (Convert.ToInt64(Scalar("SELECT count(*) FROM place"), CultureInfo.InvariantCulture) == 0)
             foreach (var place in KitchenPlace.Defaults) Save(place);
         Execute($"PRAGMA user_version = {SchemaVersion}");
@@ -741,8 +764,8 @@ public sealed class Database : IDisposable
             using var command = connection.CreateCommand();
             command.CommandText = """
                 SELECT name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group,
-                       note, packs, pack_word, size, size_unit, size_of, per_pack
-                FROM pantry ORDER BY name COLLATE NOCASE
+                       note, packs, pack_word, size, size_unit, size_of, per_pack, id
+                FROM pantry ORDER BY name COLLATE NOCASE, id
                 """;
             using var r = command.ExecuteReader();
             var items = new List<PantryItem>();
@@ -755,23 +778,28 @@ public sealed class Database : IDisposable
                 items.Add(new(r.GetString(0), r.GetDouble(1), r.GetString(2), When(3), When(4)!.Value, r.GetInt64(5) != 0,
                     When(6) ?? default, When(7), r.GetInt64(8) != 0,
                     r.IsDBNull(9) ? null : r.GetInt64(9), Text(10), Text(11), Enum.TryParse<FoodGroup>(Text(12), out var group) ? group : null,
-                    Text(13), packing.IsEmpty ? null : packing));
+                    Text(13), packing.IsEmpty ? null : packing, r.GetInt64(20)));
             }
             return items;
         }
     }
 
-    public void Save(PantryItem item)
+    /// <summary>Something in the kitchen kept: a new one (its <see cref="PantryItem.Id"/> 0) added beside any of its
+    /// name, or one there is changed. It's given back with its id.</summary>
+    public PantryItem Save(PantryItem item)
     {
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = """
-                INSERT OR REPLACE INTO pantry (name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group,
-                                               note, packs, pack_word, size, size_unit, size_of, per_pack)
-                VALUES ($name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet, $place, $icon, $color, $group,
-                        $note, $packs, $packWord, $size, $sizeUnit, $sizeOf, $perPack)
-                """;
+            const string names = "name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group, "
+                               + "note, packs, pack_word, size, size_unit, size_of, per_pack";
+            const string values = "$name, $amount, $unit, $useBy, $counted, $unsure, $added, $frozen, $useBySet, $place, $icon, $color, $group, "
+                                + "$note, $packs, $packWord, $size, $sizeUnit, $sizeOf, $perPack";
+            // One taken off since (while it was open) comes back under its id.
+            command.CommandText = item.Id == 0
+                ? $"INSERT INTO pantry ({names}) VALUES ({values}) RETURNING id"
+                : $"INSERT OR REPLACE INTO pantry (id, {names}) VALUES ($id, {values}) RETURNING id";
+            command.Parameters.AddWithValue("$id", item.Id);
             object Or(object? value) => value ?? DBNull.Value;
             var packing = item.Packing;
             command.Parameters.AddWithValue("$note", Or(item.Note is { Length: > 0 } note ? note.Trim() : null));
@@ -794,35 +822,18 @@ public sealed class Database : IDisposable
             command.Parameters.AddWithValue("$useBy", item.UseBy is { } by ? by.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
             command.Parameters.AddWithValue("$counted", item.Counted.ToString("s", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$unsure", item.Unsure);
-            command.ExecuteNonQuery();
+            return item with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
         }
     }
 
-    public void DeletePantry(string name)
+    public void DeletePantry(PantryItem item)
     {
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "DELETE FROM pantry WHERE name = $name";
-            command.Parameters.AddWithValue("$name", name.Trim());
+            command.CommandText = "DELETE FROM pantry WHERE id = $id";
+            command.Parameters.AddWithValue("$id", item.Id);
             command.ExecuteNonQuery();
-        }
-    }
-
-    /// <summary>Something given another name; false when something else has that name already.</summary>
-    public bool Rename(PantryItem item, string name)
-    {
-        lock (gate)
-        {
-            var taken = Pantry().Any(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase) && !p.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase));
-            if (taken || name.Trim().Length == 0) return false;
-            using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE pantry SET name = $name WHERE name = $old";
-            command.Parameters.AddWithValue("$name", name.Trim());
-            command.Parameters.AddWithValue("$old", item.Name.Trim());
-            command.ExecuteNonQuery();
-            Save(item with { Name = name.Trim() });
-            return true;
         }
     }
 
@@ -876,13 +887,13 @@ public sealed class Database : IDisposable
         lock (gate)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT id, at, name, amount, kcal, pantry, used, unit, meal FROM food_log WHERE at >= $from ORDER BY at, id";
+            command.CommandText = "SELECT id, at, name, amount, kcal, pantry, used, unit, meal, pantry_id FROM food_log WHERE at >= $from ORDER BY at, id";
             command.Parameters.AddWithValue("$from", from.ToString("s", CultureInfo.InvariantCulture));
             using var r = command.ExecuteReader();
             var log = new List<FoodEaten>();
             while (r.Read())
                 log.Add(new(r.GetInt64(0), DateTime.Parse(r.GetString(1), CultureInfo.InvariantCulture), r.GetString(2), r.GetString(3), r.GetInt32(4),
-                    r.IsDBNull(5) ? null : r.GetString(5), r.GetDouble(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8)));
+                    r.IsDBNull(5) ? null : r.GetString(5), r.GetDouble(6), r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8), r.IsDBNull(9) ? null : r.GetInt64(9)));
             return log;
         }
     }
@@ -894,8 +905,8 @@ public sealed class Database : IDisposable
         {
             using var command = connection.CreateCommand();
             command.CommandText = food.Id == 0
-                ? "INSERT INTO food_log (at, name, amount, kcal, pantry, used, unit, meal) VALUES ($at, $name, $amount, $kcal, $pantry, $used, $unit, $meal) RETURNING id"
-                : "UPDATE food_log SET at = $at, name = $name, amount = $amount, kcal = $kcal, pantry = $pantry, used = $used, unit = $unit, meal = $meal WHERE id = $id RETURNING id";
+                ? "INSERT INTO food_log (at, name, amount, kcal, pantry, used, unit, meal, pantry_id) VALUES ($at, $name, $amount, $kcal, $pantry, $used, $unit, $meal, $pantryId) RETURNING id"
+                : "UPDATE food_log SET at = $at, name = $name, amount = $amount, kcal = $kcal, pantry = $pantry, used = $used, unit = $unit, meal = $meal, pantry_id = $pantryId WHERE id = $id RETURNING id";
             command.Parameters.AddWithValue("$id", food.Id);
             command.Parameters.AddWithValue("$at", food.At.ToString("s", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$name", food.Name.Trim());
@@ -905,6 +916,7 @@ public sealed class Database : IDisposable
             command.Parameters.AddWithValue("$used", food.Used);
             command.Parameters.AddWithValue("$unit", food.Unit);
             command.Parameters.AddWithValue("$meal", (object?)food.Meal ?? DBNull.Value);
+            command.Parameters.AddWithValue("$pantryId", (object?)food.PantryId ?? DBNull.Value);
             return food with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
         }
     }
@@ -994,12 +1006,13 @@ public sealed class Database : IDisposable
     /// <summary>Adds a column if the table doesn't have it; true when it was added.</summary>
     private bool AddColumn(string table, string column, string type)
     {
-        using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT count(*) FROM pragma_table_info('{table}') WHERE name = '{column}'";
-        if (Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) != 0) return false;
+        if (HasColumn(table, column)) return false;
         Execute($"ALTER TABLE {table} ADD COLUMN {column} {type}");
         return true;
     }
+
+    private bool HasColumn(string table, string column) =>
+        Convert.ToInt64(Scalar($"SELECT count(*) FROM pragma_table_info('{table}') WHERE name = '{column}'"), CultureInfo.InvariantCulture) != 0;
 
     private void Execute(string sql)
     {

@@ -36,43 +36,58 @@ internal static class PantryLog
 
     public static List<PantryItem> Items() => Database.Pantry();
 
-    private static PantryItem? Find(string name) => Database.Pantry().FirstOrDefault(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+    /// <summary>What there is of a name, in the order it's listed: two bags of it kept apart are two.</summary>
+    public static List<PantryItem> Named(string name) =>
+        Database.Pantry().Where(p => p.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private static PantryItem? Find(string name) => Named(name).FirstOrDefault();
 
     private static ColdStorage Cold => App.Current.Cold;
 
-    /// <summary>Bought: added to what there is; <paramref name="inFreezer"/> when it went straight in the freezer.</summary>
+    /// <summary>Bought (from a photo): added to what there is of it; <paramref name="inFreezer"/> when it went straight
+    /// in the freezer.</summary>
     public static void Bought(string name, string quantity, int useWithinDays = 0, bool unsure = false, bool inFreezer = false)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
         Database.Save(Pantry.Add(Find(name), name.Trim(), quantity, DateTime.Now, useWithinDays, unsure, inFreezer, Cold));
     }
 
-    /// <summary>Whether there's something of that name in the kitchen already.</summary>
-    public static bool Have(string name) => Find(name) is not null;
-
     /// <summary>Something new as it would go in, where its name says, to ask where it goes.</summary>
     public static PantryItem New(string name, string quantity) => Pantry.Add(null, name.Trim(), quantity, DateTime.Now, cold: Cold);
 
     private static string PutKey(string name) => "put:" + name.Trim().ToLowerInvariant();
 
-    /// <summary>Where something was put the last time it came in new, by hand: the place (while it's there) and the group.</summary>
-    public static (KitchenPlace Place, FoodGroup Group)? PutBefore(string name)
+    /// <summary>How something was put away the last time, by hand: the place (while it's there) and the group, and
+    /// whether, with some of it there already, it was kept apart or added to that (null when that wasn't asked).</summary>
+    public static (KitchenPlace Place, FoodGroup Group, bool? Apart)? PutBefore(string name)
     {
         var saved = (Database.Setting(PutKey(name)) ?? "").Split('|');
-        if (saved.Length != 2 || !long.TryParse(saved[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+        if (saved.Length is not (2 or 3) || !long.TryParse(saved[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
             || !Enum.TryParse<FoodGroup>(saved[1], out var group))
             return null;
-        return Places().FirstOrDefault(p => p.Id == id) is { } place ? (place, group) : null;
+        bool? apart = saved.Length == 3 ? saved[2] == "apart" : null;
+        return Places().FirstOrDefault(p => p.Id == id) is { } place ? (place, group, apart) : null;
     }
 
-    /// <summary>Bought, new to the kitchen, and put in a place picked for it (frozen in a freezer, thawed out of one),
-    /// shown with a group; both are kept for the next time it's new.</summary>
-    public static void PutAway(string name, string quantity, KitchenPlace place, FoodGroup group)
+    /// <summary>
+    /// Bought by hand and put away: added to <paramref name="into"/>, some of it there already; or else a thing of its
+    /// own, beside any of its name, in a place picked for it (frozen in a freezer, thawed out of one) and shown with a
+    /// group. How it was put away is kept for next time; <paramref name="apart"/> says, when some was there, whether it
+    /// was kept apart.
+    /// </summary>
+    public static void PutAway(string name, string quantity, KitchenPlace place, FoodGroup group, PantryItem? into = null, bool? apart = null)
     {
         if (name.Trim().Length == 0 || !Pantry.Tracked(name)) return;
-        Database.SetSetting(PutKey(name), $"{place.Id.ToString(CultureInfo.InvariantCulture)}|{group}");
+        var before = PutBefore(name);
+        apart ??= before?.Apart;
+        Database.SetSetting(PutKey(name), $"{place.Id.ToString(CultureInfo.InvariantCulture)}|{group}" + (apart is { } a ? a ? "|apart" : "|together" : ""));
         var now = DateTime.Now;
-        var item = Pantry.Move(Pantry.Add(Find(name), name.Trim(), quantity, now, cold: Cold), place, now, Cold);
+        if (into is not null)
+        {
+            Database.Save(Pantry.Add(into, name.Trim(), quantity, now, cold: Cold));
+            return;
+        }
+        var item = Pantry.Move(Pantry.Add(null, name.Trim(), quantity, now, cold: Cold), place, now, Cold);
         Database.Save(item with { Group = group == item.Guess.Group ? null : group });
     }
 
@@ -88,8 +103,31 @@ internal static class PantryLog
     /// <summary>Changed in the kitchen: its picture, group, best-before or place (which freezes or thaws it).</summary>
     public static void Changed(PantryItem item) => Database.Save(item);
 
-    /// <summary>Given another name; false when something else is called that already.</summary>
-    public static bool Rename(PantryItem item, string name) => Database.Rename(item, name);
+    /// <summary>Part of something made a thing of its own, beside it; null, with the problem, when that can't be.</summary>
+    public static PantryItem? Split(PantryItem item, string amount, out string problem)
+    {
+        if (Pantry.Split(item, amount, out problem) is not { } split) return null;
+        Database.Save(split.Left);
+        RememberApart(item, true);
+        return Database.Save(split.Part);
+    }
+
+    /// <summary>Split or put together by hand: what's bought of it next time is kept apart, or added, the same way.</summary>
+    private static void RememberApart(PantryItem item, bool apart)
+    {
+        var (place, group) = PutBefore(item.Name) is { } before ? (before.Place, before.Group) : (Pantry.PlaceOf(item, Places()), item.ShownGroup);
+        Database.SetSetting(PutKey(item.Name), $"{place.Id.ToString(CultureInfo.InvariantCulture)}|{group}|{(apart ? "apart" : "together")}");
+    }
+
+    /// <summary>The others of its name, in the same unit, put together with it as one.</summary>
+    public static PantryItem Join(PantryItem item)
+    {
+        var others = Named(item.Name).Where(p => p.Id != item.Id && p.Unit == item.Unit).ToList();
+        var joined = Database.Save(Pantry.Join(item, others));
+        foreach (var other in others) Database.DeletePantry(other);
+        RememberApart(item, false);
+        return joined;
+    }
 
     /// <summary>Things moved to a place together: into a freezer they're frozen from now, out of one thawed.</summary>
     public static void Move(IEnumerable<PantryItem> items, KitchenPlace to)
@@ -164,7 +202,7 @@ internal static class PantryLog
     /// <summary>The count is right as it is.</summary>
     public static void Confirmed(PantryItem item) => Database.Save(item with { Counted = DateTime.Now, Unsure = false });
 
-    public static void Gone(PantryItem item) => Database.DeletePantry(item.Name);
+    public static void Gone(PantryItem item) => Database.DeletePantry(item);
 
     /// <summary>A recipe cooked: what it uses comes off the stock, once for <paramref name="key"/> (a meal, or a
     /// cooking).</summary>

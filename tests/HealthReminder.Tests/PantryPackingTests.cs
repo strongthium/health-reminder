@@ -91,11 +91,10 @@ public sealed class PantryPackingTests
         using var database = new Database();
         var (packing, _) = Pantry.ReadPacking("1", "pack", "500 g", true, "12");
         var hotDogs = Item("Hot dogs", 8) with { Note = "Schneiders", Packing = packing };
-        database.Save(hotDogs);
+        hotDogs = database.Save(hotDogs);
         database.Save(Item("Buns"));
         Assert.Equal(hotDogs, database.Pantry().Single(p => p.Name == "Hot dogs"));
-        Assert.False(database.Rename(hotDogs, "buns"));
-        Assert.True(database.Rename(hotDogs, "Wieners"));
+        database.Save(hotDogs with { Name = "Wieners" });
         Assert.Equal(["Buns", "Wieners"], database.Pantry().Select(p => p.Name));
         Assert.Equal(hotDogs with { Name = "Wieners" }, database.Pantry().Single(p => p.Name == "Wieners"));
     }

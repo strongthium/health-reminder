@@ -147,7 +147,7 @@ public sealed class KitchenPlaceTests
         Assert.Contains(database.Places(), p => p.Name == "Kitchen fridge");
 
         var coke = Item("Coke") with { Place = id, Icon = "bottle", Color = "#112233", Group = FoodGroup.Snacks };
-        database.Save(coke);
+        coke = database.Save(coke);
         Assert.Equal(coke, database.Pantry().Single());
         // Taken away, what was in it goes where its kind goes.
         database.DeletePlace(id);

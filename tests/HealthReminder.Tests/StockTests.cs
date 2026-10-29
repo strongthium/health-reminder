@@ -190,6 +190,47 @@ public sealed class StockTests
     }
 
     [Fact]
+    public void TwoBagsOfAThingAreKeptApart()
+    {
+        using var database = new Database();
+        var small = database.Save(Pantry.Add(null, "Rice", "900 g", Monday));
+        var big = database.Save(Pantry.Add(null, "rice", "1.5 kg", Monday.AddDays(3)));
+        Assert.Equal([900.0, 1500.0], database.Pantry().Select(p => p.Amount));
+        // One taken off leaves the other.
+        database.DeletePantry(small);
+        Assert.Equal(big.Id, Assert.Single(database.Pantry()).Id);
+    }
+
+    [Fact]
+    public void CookingTakesFromTheBagToUseFirstThenTheNext()
+    {
+        var pantry = new List<PantryItem>
+        {
+            new("Ground beef", 454, "g", Monday.AddDays(5), Monday, false, Id: 1),
+            new("Ground beef", 60, "g", Monday.AddDays(2), Monday, false, Id: 2),
+        };
+        var left = Pantry.Cook(pantry, Recipes.Get("spaghetti")!).ToDictionary(p => p.Id);
+        // 100 g: the 60 g that's to be used first, then 40 g of the other.
+        Assert.Equal((0.0, 414.0), (left[2].Amount, left[1].Amount));
+        Assert.False(left[1].Unsure);
+    }
+
+    [Fact]
+    public void PartOfABagIsSplitOffAndPutBack()
+    {
+        var rice = new PantryItem("Rice", 2400, "g", null, Monday, false, Id: 7);
+        var split = Pantry.Split(rice, "900 g", out var problem);
+        Assert.Equal("", problem);
+        Assert.Equal((1500.0, 7L, 900.0, 0L), (split!.Value.Left.Amount, split.Value.Left.Id, split.Value.Part.Amount, split.Value.Part.Id));
+        Assert.Null(Pantry.Split(rice, "3 kg", out problem));
+        Assert.NotEqual("", problem);
+        Assert.Null(Pantry.Split(rice, "some", out _));
+
+        var joined = Pantry.Join(split.Value.Left, [split.Value.Part with { Id = 8, UseBy = Monday.AddDays(9) }]);
+        Assert.Equal((2400.0, 7L, (DateTime?)Monday.AddDays(9)), (joined.Amount, joined.Id, joined.UseBy));
+    }
+
+    [Fact]
     public void WhatsInDoubtIsAGuessOrLongUncounted()
     {
         var now = Monday.AddDays(20);
@@ -207,12 +248,13 @@ public sealed class StockTests
     public void KeepsTheStock()
     {
         using var database = new Database();
-        database.Save(new PantryItem("Eggs", 12, "egg", null, Monday, false));
-        database.Save(new PantryItem("eggs", 8, "egg", null, Monday, true));     // the same, by name
+        var saved = database.Save(new PantryItem("Eggs", 12, "egg", null, Monday, false));
+        Assert.NotEqual(0, saved.Id);
+        database.Save(saved with { Amount = 8, Unsure = true });                 // the same one, by its id
         var eggs = Assert.Single(database.Pantry());
-        Assert.Equal((8.0, true), (eggs.Amount, eggs.Unsure));
+        Assert.Equal((8.0, true, saved.Id), (eggs.Amount, eggs.Unsure, eggs.Id));
         Assert.Equal((Monday, (DateTime?)null, false), (eggs.Since, eggs.Frozen, eggs.UseBySet));
-        database.DeletePantry("Eggs");
+        database.DeletePantry(eggs);
         Assert.Empty(database.Pantry());
 
         var chicken = Pantry.SetUseBy(Pantry.Freeze(Pantry.Add(null, "Chicken breasts", "4", Monday), Monday.AddDays(1)), Monday.AddDays(200));

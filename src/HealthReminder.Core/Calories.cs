@@ -2,11 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace Strongthium.HealthReminder;
 
-/// <summary>Something eaten and logged by hand: from the kitchen (<paramref name="Pantry"/>, the stock's name, with
-/// <paramref name="Used"/> in its <paramref name="Unit"/> taken off, so it can be put back), or eaten out. When it was
-/// had in place of a meal reminder, <paramref name="Meal"/> is that dose's key, and the meal counts as eaten.</summary>
+/// <summary>Something eaten and logged by hand: from the kitchen (<paramref name="Pantry"/>, the stock's name, and
+/// <paramref name="PantryId"/>, which one of that name, with <paramref name="Used"/> in its <paramref name="Unit"/> taken
+/// off, so it can be put back), or eaten out. When it was had in place of a meal reminder, <paramref name="Meal"/> is
+/// that dose's key, and the meal counts as eaten.</summary>
 public sealed record FoodEaten(long Id, DateTime At, string Name, string Amount, int Kcal, string? Pantry = null, double Used = 0, string Unit = "",
-    string? Meal = null);
+    string? Meal = null, long? PantryId = null);
 
 /// <summary>What a food has, roughly: kcal in 100 g (or 100 mL, for what's poured or scooped), in one piece of it as
 /// it's usually counted (an egg, a slice, a can; 0 when it isn't), and a usual serving, in g or mL.</summary>

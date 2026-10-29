@@ -478,6 +478,19 @@
                                           <Button Content="Usual date" Click="PantryUsualDate_Click" Padding="12,5" VerticalAlignment="Bottom" Margin="0,0,0,8"
                                                   IsEnabled="{Binding UseBySet}" ToolTip="Back to the date worked out from when it was added or frozen" />
                                         </WrapPanel>
+                                        <!-- Two bags of a thing: part made one of its own, or the others put back with it. -->
+                                        <WrapPanel>
+                                          <StackPanel Margin="0,0,8,8">
+                                            <TextBlock Text="A bag of its own" Style="{StaticResource Caption}" Margin="0,0,0,3" />
+                                            <TextBox Text="{Binding SplitText, UpdateSourceTrigger=PropertyChanged}" Width="90" MinWidth="0" KeyDown="PantrySplit_KeyDown"
+                                                     ToolTip="How much of it is apart: a second bag, box or carton (900 g, 1 L, 6)" />
+                                          </StackPanel>
+                                          <Button Content="Split it off" Click="PantrySplit_Click" Padding="12,5" VerticalAlignment="Bottom" Margin="0,0,12,8"
+                                                  ToolTip="Make that much a thing of its own, beside this one, with its own place and dates" />
+                                          <Button Content="{Binding JoinText}" Click="PantryJoin_Click" Padding="12,5" VerticalAlignment="Bottom" Margin="0,0,0,8"
+                                                  Visibility="{Binding CanJoin, Converter={StaticResource VisibleIf}}"
+                                                  ToolTip="Put the others of its name with this one, as one: their amounts added up" />
+                                        </WrapPanel>
                                         <Grid>
                                           <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />

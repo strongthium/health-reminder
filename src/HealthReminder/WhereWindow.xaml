@@ -20,10 +20,15 @@
       </StackPanel>
     </Grid>
 
-    <TextBlock Text="Where does it go?" Style="{StaticResource Label}" Margin="0,18,0,8" />
-    <WrapPanel x:Name="PlacePanel" />
+    <StackPanel x:Name="HavePanel" Visibility="Collapsed">
+      <TextBlock Text="You have some already: add it to" Style="{StaticResource Label}" Margin="0,18,0,8" />
+      <WrapPanel x:Name="HaveTiles" />
+    </StackPanel>
+
+    <TextBlock x:Name="PlaceLabel" Style="{StaticResource Label}" Margin="0,18,0,8" />
+    <WrapPanel x:Name="PlaceTiles" />
     <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
-               Text="In a freezer, it's frozen from today, and its best-before is how long it keeps frozen. Next time it's new to the kitchen, it goes where you put it now." />
+               Text="In a freezer, it's frozen from today, and its best-before is how long it keeps frozen. Next time, it's put away the same way without asking." />
 
     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
       <TextBlock Text="Shown with" VerticalAlignment="Center" Margin="0,0,10,0" />

@@ -12,17 +12,17 @@ internal static class FoodLog
     public static List<FoodEaten> Since(DateTime from) => Database.FoodLog(from);
 
     /// <summary>Some of something in the kitchen, eaten: so much comes off it, as it is now.</summary>
-    public static void FromKitchen(string pantry, string amount, int kcal, DateTime at, string? meal)
+    public static void FromKitchen(PantryItem eaten, string amount, int kcal, DateTime at, string? meal)
     {
-        var item = Database.Pantry().FirstOrDefault(p => p.Name.Equals(pantry, StringComparison.OrdinalIgnoreCase));
+        var item = Database.Pantry().FirstOrDefault(p => p.Id == eaten.Id);
         if (item is null)
         {
-            Database.Save(new FoodEaten(0, at, pantry, amount, kcal, Meal: meal));
+            Database.Save(new FoodEaten(0, at, eaten.Name, amount, kcal, Meal: meal));
             return;
         }
         var portion = Calories.Eat(item, amount);
         Database.Save(Calories.Left(item, portion));
-        Database.Save(new FoodEaten(0, at, item.Name, amount, kcal, item.Name, portion.Used, item.Unit, meal));
+        Database.Save(new FoodEaten(0, at, item.Name, amount, kcal, item.Name, portion.Used, item.Unit, meal, item.Id));
     }
 
     public static void EatenOut(string name, string amount, int kcal, DateTime at, string? meal) =>
@@ -31,12 +31,15 @@ internal static class FoodLog
     /// <summary>Had in place of a meal: the meal is eaten, as far as the reminders go.</summary>
     public static void ForMeal(Dose dose, DateTime at) => App.Current.Schedule.Done(dose, at);
 
-    /// <summary>Taken out of the log: what came off the stock goes back, while the stock is in the same unit.</summary>
+    /// <summary>Taken out of the log: what came off the stock goes back to what it came off (or, if that's gone, to
+    /// another of its name), while the stock is in the same unit.</summary>
     public static void Remove(FoodEaten food)
     {
         Database.Delete(food);
         if (food.Pantry is not { } name || food.Used <= 0) return;
-        var item = Database.Pantry().FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var pantry = Database.Pantry();
+        var item = pantry.FirstOrDefault(p => p.Id == food.PantryId)
+            ?? pantry.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && p.Unit == food.Unit);
         if (item is not null && item.Unit == food.Unit) Database.Save(item with { Amount = Math.Max(0, item.Amount) + food.Used });
     }
 

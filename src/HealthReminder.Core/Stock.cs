@@ -20,11 +20,12 @@ public sealed record Supply(double OnHand, double DailyUse)
 /// out from those. <paramref name="Place"/> is the place it was put in (null for where it goes, by what it is), and
 /// <paramref name="Icon"/>, <paramref name="Color"/> and <paramref name="Group"/> what was picked for it, null for what
 /// its name says (<see cref="Foods.Guess"/>). <paramref name="Note"/> is a second name for which one it is (a brand:
-/// "Schneiders"), and <paramref name="Packing"/> the packs it's in and what each piece weighs.</summary>
+/// "Schneiders"), and <paramref name="Packing"/> the packs it's in and what each piece weighs. Things of one name can be
+/// kept apart (a 900 g bag and a 1.5 kg one), each by its <paramref name="Id"/>: 0 until it's kept.</summary>
 public sealed record PantryItem(string Name, double Amount, string Unit, DateTime? UseBy, DateTime Counted, bool Unsure,
     DateTime Added = default, DateTime? Frozen = null, bool UseBySet = false,
     long? Place = null, string? Icon = null, string? Color = null, FoodGroup? Group = null,
-    string? Note = null, Packing? Packing = null)
+    string? Note = null, Packing? Packing = null, long Id = 0)
 {
     public bool InFreezer => Frozen is not null;
 
@@ -370,35 +371,85 @@ public static partial class Pantry
     /// with the amount read from it. More used than there was makes the count a guess.</summary>
     public static List<PantryItem> Cook(IReadOnlyList<PantryItem> pantry, Recipe recipe)
     {
-        var changed = new Dictionary<string, PantryItem>(StringComparer.OrdinalIgnoreCase);
-        PantryItem Current(PantryItem p) => changed.TryGetValue(p.Name, out var c) ? c : p;
+        // By where each is in the list: two of a name are two.
+        var changed = new Dictionary<int, PantryItem>();
+        PantryItem Current(int i) => changed.TryGetValue(i, out var c) ? c : pantry[i];
+        // What's of a name, soonest to use first: a recipe takes from the bag that's open, then the next.
+        List<int> Of(Func<PantryItem, bool> match, string unit) =>
+            Enumerable.Range(0, pantry.Count).Where(i => match(pantry[i]) && pantry[i].Unit == unit)
+                .OrderBy(i => Current(i).Amount > 0 ? 0 : 1).ThenBy(i => pantry[i].UseBy ?? DateTime.MaxValue).ThenBy(i => pantry[i].Since).ToList();
         foreach (var ingredient in recipe.Ingredients)
         {
-            PantryItem? item;
+            List<int> from;
             double use;
             if (ingredient.Grocery.Length > 0)
             {
-                item = pantry.FirstOrDefault(p => p.Name.Equals(ingredient.Grocery, StringComparison.OrdinalIgnoreCase));
-                if (item is null || GroceryCatalog.Get(ingredient.Grocery) is not { Staple: false } info || info.Unit != item.Unit) continue;
+                if (GroceryCatalog.Get(ingredient.Grocery) is not { Staple: false } info) continue;
+                from = Of(p => p.Name.Equals(ingredient.Grocery, StringComparison.OrdinalIgnoreCase), info.Unit);
                 use = ingredient.Use;
             }
             else
             {
-                item = pantry.FirstOrDefault(p => Mentions(ingredient.Name, p.Name));
-                if (item is null) continue;
-                var (amount, unit, read) = Read(item.Name, ingredient.Amount);
-                if (unit != item.Unit || !read)
+                var first = Enumerable.Range(0, pantry.Count).FirstOrDefault(i => Mentions(ingredient.Name, pantry[i].Name), -1);
+                if (first < 0) continue;
+                var name = pantry[first].Name;
+                var (amount, unit, read) = Read(name, ingredient.Amount);
+                from = Of(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase), unit);
+                if (from.Count == 0 || !read)
                 {
-                    changed[item.Name] = Current(item) with { Unsure = true };
+                    changed[first] = Current(first) with { Unsure = true };
                     continue;
                 }
                 use = ingredient.Amount.Length == 0 ? 0 : amount;
             }
-            var now = Current(item);
-            var left = now.Amount - use;
-            changed[item.Name] = now with { Amount = Math.Max(0, left), Unsure = now.Unsure || left < 0 };
+            if (from.Count == 0) continue;
+            // Each in turn gives what it has; more than all of them had leaves the last one's count a guess.
+            for (var k = 0; k < from.Count && use > 0; k++)
+            {
+                var now = Current(from[k]);
+                var last = k == from.Count - 1;
+                var take = last ? use : Math.Min(use, Math.Max(0, now.Amount));
+                var left = now.Amount - take;
+                changed[from[k]] = now with { Amount = Math.Max(0, left), Unsure = now.Unsure || left < 0 };
+                use -= take;
+            }
         }
         return changed.Values.ToList();
+    }
+
+    /// <summary>Part of something made a thing of its own: a second bag, as it was bought apart, with the rest of it as
+    /// it was. Null, with a problem, when the amount isn't one, or isn't less than what there is.</summary>
+    public static (PantryItem Left, PantryItem Part)? Split(PantryItem item, string amount, out string problem)
+    {
+        problem = "";
+        var (part, unit, read) = Read(item.Name, amount);
+        if (!read || unit != item.Unit || part <= 0)
+        {
+            problem = $"How much is the part on its own? An amount like {(item.Unit is "g" or "mL" ? "900 g" : "6")}.";
+            return null;
+        }
+        if (part >= item.Amount)
+        {
+            problem = "The part on its own has to be less than all there is.";
+            return null;
+        }
+        return (item with { Amount = item.Amount - part }, item with { Id = 0, Amount = part, Packing = item.Packing is { } p ? p with { Packs = null } : null });
+    }
+
+    /// <summary>Others of its name put together with something, as one: what they have, added up, from the first in;
+    /// the soonest best-before, and in doubt if any of them was.</summary>
+    public static PantryItem Join(PantryItem item, IEnumerable<PantryItem> others)
+    {
+        var all = others.Where(o => o.Id != item.Id && o.Unit == item.Unit).Prepend(item).ToList();
+        return item with
+        {
+            Amount = all.Sum(p => Math.Max(0, p.Amount)),
+            Unsure = all.Any(p => p.Unsure),
+            UseBy = all.Min(p => p.UseBy),
+            UseBySet = all.Any(p => p.UseBySet),
+            Added = all.Min(p => p.Since),
+            Counted = all.Min(p => p.Counted),
+        };
     }
 
     /// <summary>Whether a recipe's ingredient ("2 large eggs, beaten") names a food in the stock ("Eggs").</summary>
