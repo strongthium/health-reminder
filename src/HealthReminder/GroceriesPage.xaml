@@ -429,9 +429,9 @@
                                         </WrapPanel>
                                         <WrapPanel>
                                           <StackPanel Margin="0,0,8,8">
-                                            <TextBlock Text="How much" Style="{StaticResource Caption}" Margin="0,0,0,3" />
+                                            <TextBlock Text="How much is left" Style="{StaticResource Caption}" Margin="0,0,0,3" />
                                             <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" Width="90" LostFocus="PantryField_LostFocus" KeyDown="PantryField_KeyDown"
-                                                     ToolTip="How much there is now: 2, 8, 300 g, half a loaf" />
+                                                     ToolTip="How much there is now: 2, 8, 300 g, ½. Some eaten before it was in the app, or thrown out? Type what's left." />
                                           </StackPanel>
                                           <TextBlock Text="in" VerticalAlignment="Bottom" Margin="0,0,8,14" />
                                           <StackPanel Margin="0,0,6,8">
@@ -460,6 +460,20 @@
                                                      ToolTip="How many a full pack holds: 12" />
                                           </StackPanel>
                                           <TextBlock Text="{Binding InAllText}" Style="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="0,0,0,14" />
+                                        </WrapPanel>
+                                        <!-- Some of it used up: eaten, which goes in the food log too, or thrown out. -->
+                                        <WrapPanel>
+                                          <StackPanel Margin="0,0,8,8">
+                                            <TextBlock Text="Used some" Style="{StaticResource Caption}" Margin="0,0,0,3" />
+                                            <TextBox x:Name="UsedBox" Text="{Binding UsedText, UpdateSourceTrigger=PropertyChanged}" Width="90" MinWidth="0" KeyDown="PantryUsed_KeyDown"
+                                                     ToolTip="How much of it: 1, 2, ½, 150 g, 1 cup. For what's weighed, 1 is a serving." />
+                                          </StackPanel>
+                                          <Button Content="Ate it" Click="PantryAte_Click" Padding="12,5" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                                  ToolTip="Take it off, and put it in today's food log with about its kcal (taken out of the log, it goes back)" />
+                                          <Button Content="Threw it out" Click="PantryThrown_Click" Padding="12,5" VerticalAlignment="Bottom" Margin="0,0,12,8"
+                                                  ToolTip="Take it off, without logging it as eaten" />
+                                          <TextBlock Text="{Binding UsedNote}" Style="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="380" VerticalAlignment="Bottom" Margin="0,0,0,14"
+                                                     Visibility="{Binding UsedNote, Converter={StaticResource VisibleIfText}}" />
                                         </WrapPanel>
                                         <WrapPanel>
                                           <StackPanel Margin="0,0,12,8">

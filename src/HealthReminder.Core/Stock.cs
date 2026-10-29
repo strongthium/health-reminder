@@ -436,6 +436,24 @@ public static partial class Pantry
         return (item with { Amount = item.Amount - part }, item with { Id = 0, Amount = part, Packing = item.Packing is { } p ? p with { Packs = null } : null });
     }
 
+    /// <summary>Some of something used up, eaten or thrown out: what that comes to (<see cref="Calories.Eat"/>), and
+    /// what's left of it. Nothing typed is a usual amount (<see cref="Calories.UsualAmount"/>); null, with a problem,
+    /// when what's typed isn't an amount.</summary>
+    public static (PantryItem Left, Portion Portion, string Amount)? Use(PantryItem item, string amount, out string problem)
+    {
+        problem = "";
+        amount = amount.Trim().Length > 0 ? amount.Trim() : Calories.UsualAmount(item);
+        if (Quantities.Parse(amount) is not { Amount: > 0 })
+        {
+            problem = item.Unit is "g" or "mL"
+                ? "How much of it? A weight or an amount (150 g, 5 oz, 1 cup), or 1 for a serving."
+                : "How much of it? A number like 1, 2 or ½.";
+            return null;
+        }
+        var portion = Calories.Eat(item, amount);
+        return (Calories.Left(item, portion), portion, amount);
+    }
+
     /// <summary>Others of its name put together with something, as one: what they have, added up, from the first in;
     /// the soonest best-before, and in doubt if any of them was.</summary>
     public static PantryItem Join(PantryItem item, IEnumerable<PantryItem> others)

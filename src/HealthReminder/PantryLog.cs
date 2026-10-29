@@ -129,6 +129,16 @@ internal static class PantryLog
         return joined;
     }
 
+    /// <summary>Some of it used up: eaten, which goes in today's food log too, with about its kcal (and goes back on
+    /// if it's taken out of the log), or thrown out. Null, with the problem, when the amount isn't one.</summary>
+    public static (PantryItem Left, Portion Portion, string Amount)? Used(PantryItem item, string amount, bool eaten, out string problem)
+    {
+        if (Pantry.Use(item, amount, out problem) is not { } use) return null;
+        if (eaten) FoodLog.FromKitchen(item, use.Amount, use.Portion.Kcal, DateTime.Now, null);
+        else Database.Save(use.Left);
+        return (Database.Pantry().FirstOrDefault(p => p.Id == item.Id) ?? use.Left, use.Portion, use.Amount);
+    }
+
     /// <summary>Things moved to a place together: into a freezer they're frozen from now, out of one thawed.</summary>
     public static void Move(IEnumerable<PantryItem> items, KitchenPlace to)
     {

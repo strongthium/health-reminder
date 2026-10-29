@@ -119,7 +119,8 @@ last price per litre or kilogram.
 
 Your kitchen: a running stock that the meals you cook take off, by where it's kept and then by group, a line each with
 its picture, its brand, how much and its best-before. What's in doubt has a badge on its picture. A click on a line opens
-it, to change its name, brand, packs, place, group and dates there. **Search** finds things on the list and in the
+it, to change its name, brand, packs, place, group and dates there, or to take off some eaten (which goes in the food
+log) or thrown out. **Search** finds things on the list and in the
 kitchen, and something new put away by hand asks where it goes.
 
 <img src="docs/kitchen-picture.png" alt="Picking a thing's picture by kind, and its colour" width="60%">
@@ -438,7 +439,15 @@ poured apart, and adds what's counted, like eggs or cans). Next time it's put aw
 
 **Two of a thing.** An opened line splits part of it off as a bag of its own (**Split it off**, with how much), or
 puts the others of its name back with it as one; either way, what's bought of it next time goes the same way. A recipe
-takes from the bag that's best used first, then the next. **Places**
+takes from the bag that's best used first, then the next.
+
+**Some used.** An opened line takes off a portion as it's used: type how much under **Used some** (a serving is filled
+in: 60 g of rice, 1 egg; 1 of what's weighed is a serving) and press **Ate it**, which puts it in today's food log with
+about its calories, or **Threw it out**, which doesn't. The line says what's left. Taken out of the food log, what was
+eaten goes back. What was eaten before it was in the app, or what's left after some went bad, is typed in **How much
+is left**.
+
+**Places**
 adds more and names them (a **Deep freezer** beside the fridge's freezer, a **Garage fridge**), orders them, and
 takes them away; what's in a place taken away goes where its kind goes. A place's heading folds it away.
 

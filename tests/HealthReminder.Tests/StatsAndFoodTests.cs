@@ -66,6 +66,30 @@ public sealed class StatsAndFoodTests : IDisposable
     }
 
     [Fact]
+    public void SomeUsedUpComesOffWhatsLeft()
+    {
+        // Nothing typed is a serving of what's weighed, or one of what's counted.
+        var rice = Item("Rice", "900 g");
+        var serving = Pantry.Use(rice, " ", out var problem);
+        Assert.Equal("", problem);
+        Assert.Equal(("60 g", 840.0), (serving!.Value.Amount, serving.Value.Left.Amount));
+        Assert.Equal(1200, Pantry.Use(Item("Rice", "1.5 kg"), "0.3 kg", out _)!.Value.Left.Amount, 6);
+        Assert.Equal(11, Pantry.Use(Item("Eggs", "12"), "", out _)!.Value.Left.Amount);
+        // All of it, and more: none left, and in doubt.
+        var last = Pantry.Use(Item("Eggs", "2"), "3", out _)!.Value.Left;
+        Assert.Equal((0.0, true), (last.Amount, last.Unsure));
+    }
+
+    [Theory]
+    [InlineData("Rice", "900 g", "lots", "How much of it? A weight or an amount (150 g, 5 oz, 1 cup), or 1 for a serving.")]
+    [InlineData("Eggs", "12", "0", "How much of it? A number like 1, 2 or ½.")]
+    public void WhatsUsedHasToBeAnAmount(string name, string quantity, string amount, string problem)
+    {
+        Assert.Null(Pantry.Use(Item(name, quantity), amount, out var said));
+        Assert.Equal(problem, said);
+    }
+
+    [Fact]
     public void TheFoodLogIsKept()
     {
         var saved = database.Save(new FoodEaten(0, Now, "Cheeseburger", "2", 600, Meal: "3@2026-10-28T12:00"));

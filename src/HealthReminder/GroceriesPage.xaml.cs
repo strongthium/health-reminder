@@ -164,6 +164,10 @@ public sealed class PantryRow : INotifyPropertyChanged
     public string NoteText { get; set; } = "";
     /// <summary>How much of it to make a thing of its own: a second bag.</summary>
     public string SplitText { get; set; } = "";
+    /// <summary>How much of it was eaten or thrown out: a usual amount until it's typed over.</summary>
+    public string UsedText { get; set; } = "";
+    /// <summary>What the last of it eaten or thrown out came to, and what's left.</summary>
+    public string UsedNote { get; private set; } = "";
 
     /// <summary>How many others of its name there are, in its unit, to put together with it.</summary>
     public int Others { get; set; }
@@ -199,11 +203,12 @@ public sealed class PantryRow : INotifyPropertyChanged
     public string Problem { get; private set; } = "";
 
     /// <summary>It's changed: the line shows it, and the boxes what it is now.</summary>
-    public void Update(PantryItem changed, string problem = "")
+    public void Update(PantryItem changed, string problem = "", string usedNote = "")
     {
         Item = changed;
         Reset();
         Problem = problem;
+        UsedNote = usedNote;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
 
@@ -217,6 +222,8 @@ public sealed class PantryRow : INotifyPropertyChanged
         NameText = Item.Name;
         NoteText = Item.Note ?? "";
         SplitText = "";
+        var usual = Calories.UsualAmount(Item);
+        UsedText = Item.Unit is "g" or "mL" && Quantities.Parse(usual) is { } serving ? Quantities.Format(serving, system) : usual;
         AmountText = Pantry.Show(Item, system);
         var packing = Item.Packing;
         PacksText = packing?.Packs is { } packs ? Amounts.Format(packs, "") : "";
@@ -679,8 +686,10 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private void PantrySplit_Click(object sender, RoutedEventArgs e)
     {
         if (PantryRowOf(sender) is not { } row) return;
+        // Read before what's kept shows the line afresh.
+        var typed = row.SplitText;
         Keep(row);
-        if (PantryLog.Split(row.Item, row.SplitText, out var problem) is not { } part)
+        if (PantryLog.Split(row.Item, typed, out var problem) is not { } part)
         {
             row.Update(row.Item, problem);
             return;
@@ -695,6 +704,41 @@ public sealed partial class GroceriesPage : UserControl, IPage
         if (e.Key != Key.Enter) return;
         e.Handled = true;
         PantrySplit_Click(sender, e);
+    }
+
+    private void PantryAte_Click(object sender, RoutedEventArgs e) => Used(sender, eaten: true);
+
+    private void PantryThrown_Click(object sender, RoutedEventArgs e) => Used(sender, eaten: false);
+
+    /// <summary>Enter eats it: what's had is more often typed than what's thrown out.</summary>
+    private void PantryUsed_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        Used(sender, eaten: true);
+    }
+
+    /// <summary>Some of it eaten (and logged) or thrown out: it comes off, and the line says what's left.</summary>
+    private void Used(object sender, bool eaten)
+    {
+        if (PantryRowOf(sender) is not { } row) return;
+        // Read before what's kept shows the line afresh.
+        var typed = row.UsedText;
+        Keep(row);
+        if (PantryLog.Used(row.Item, typed, eaten, out var problem) is not { } used)
+        {
+            row.Update(row.Item, usedNote: problem);
+            return;
+        }
+        var (left, portion, amount) = used;
+        var system = App.Measures;
+        var what = portion.Read ? Pantry.Show(row.Item with { Amount = portion.Used }, system) : amount;
+        var said = (eaten ? $"Ate {what}" + (portion.Kcal > 0 ? $", about {portion.Kcal} kcal" : "") + ", in today's food log." : $"Threw out {what}.")
+            + (!portion.Read ? " How much of it that is can't be told: type what's left in How much is left."
+                : left.Amount <= 0 ? " That was the last of it."
+                : $" {Pantry.Show(left, system)} left.");
+        row.Update(left, usedNote: said);
+        App.KitchenChanged();
     }
 
     /// <summary>The others of its name, in its unit, put together with it as one.</summary>
