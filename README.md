@@ -609,11 +609,17 @@ it, for anyone who wants a bridge on hard days.
   missed, when more were missed than usual, when there are more cigarettes than usual by this time of day (or fewer),
   when they're closer together, when yesterday had more than usual, few of the drinks, or more calories than planned.
 
+## About and updates
+
+**About** (the last page down the side) says who makes `health-reminder`, with links to Strongthium, and asks GitHub whether there's a newer version. If there is, **Update** downloads the release, checks it against the release's `SHA256SUMS`, replaces the program and starts it again. Your reminders and history are in their own folder, and stay as they are. If the program's folder can't be changed without an administrator, it says so, and **What's new** leads to the release to download by hand. The checksums come with the release, so they catch a damaged download, not a tampered release.
+
+GitHub is asked only when About is opened, again if it's still open an hour later, or when **Check again** is pressed. `api.github.com` sees that the question came from your address, and which program and version asked.
+
 ## Your data
 
 Everything is in one SQLite file, with the photos and videos beside it, in `%LocalAppData%\Strongthium\health-reminder`. Nothing is
 sent anywhere except the DailyMed, RxNorm and Health Canada lookups above, and, only if you turn on **Help from Claude**, the
-grocery photos and kitchen list described above. **Start when I sign in** adds `Strongthium health-reminder`
+grocery photos and kitchen list described above. About asks GitHub for the latest version, and tells it nothing of yours. **Start when I sign in** adds `Strongthium health-reminder`
 to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; it starts in the tray.
 
 `--data <folder>` keeps everything in another folder instead: on a USB stick, say, or to try the program out without

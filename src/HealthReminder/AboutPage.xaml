@@ -1,0 +1,109 @@
+<UserControl x:Class="Strongthium.HealthReminder.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <UserControl.Resources>
+    <ControlTemplate x:Key="OnlyContent" TargetType="Button">
+      <ContentPresenter />
+    </ControlTemplate>
+  </UserControl.Resources>
+  <!-- Strongthium's banner, this program and whether there's a newer version of it, and what else Strongthium does. -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32,26,32,32" MaxWidth="860" HorizontalAlignment="Left">
+      <TextBlock Text="About" Style="{StaticResource PageTitle}" Margin="0,0,0,18" />
+
+      <Button Template="{StaticResource OnlyContent}" Cursor="Hand" Margin="0,0,0,12" Tag="https://strongthium.com" Click="Banner_Click"
+              ToolTip="strongthium.com" AutomationProperties.Name="Strongthium Labs: firewall, live chat and mail server. Software you run yourself. Free editions. Start free.">
+        <Viewbox>
+          <Border Width="728" Height="90" CornerRadius="8">
+            <Border.Background>
+              <ImageBrush ImageSource="/Assets/strongthium-banner.jpg" />
+            </Border.Background>
+          </Border>
+        </Viewbox>
+      </Button>
+
+      <!-- This program, and whether there's a newer one -->
+      <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+        <StackPanel>
+          <DockPanel>
+            <Image x:Name="ProgramIcon" Width="40" Height="40" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,2,14,0" />
+            <StackPanel>
+              <TextBlock Text="Strongthium Health Reminder" Style="{StaticResource Heading}" />
+              <TextBlock x:Name="VersionText" Style="{StaticResource Muted}" />
+              <TextBlock Style="{StaticResource Caption}" Margin="0,4,0,0"
+                         Text="Reminds you of pills, injections, tests, meals and water, shows what the very pill looks like, and plans meals, groceries and exercise. Free and open source, under the MIT license. Copyright (c) 2026 Strongthium." />
+            </StackPanel>
+          </DockPanel>
+
+          <Border Height="1" Margin="0,14" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+
+          <DockPanel>
+            <TextBlock x:Name="UpdateIcon" Style="{StaticResource Icon}" FontSize="18" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,1,12,0" />
+            <StackPanel>
+              <TextBlock x:Name="UpdateTitle" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock x:Name="UpdateDetail" Style="{StaticResource Caption}" Margin="0,2,0,0" />
+              <ProgressBar x:Name="UpdateBar" Height="4" Margin="0,8,0,0" Visibility="Collapsed" />
+              <WrapPanel Margin="0,10,0,0">
+                <Button x:Name="UpdateButton" Style="{DynamicResource AccentButtonStyle}" Padding="14,6" Margin="0,0,8,0" Visibility="Collapsed" Click="Update_Click" />
+                <Button x:Name="NotesButton" Content="What's new" Padding="12,6" Margin="0,0,8,0" Visibility="Collapsed" Click="Notes_Click" />
+                <Button x:Name="CheckButton" Content="Check again" Padding="12,6" Click="Check_Click" />
+              </WrapPanel>
+            </StackPanel>
+          </DockPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- What Strongthium does -->
+      <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="What we do" Style="{StaticResource Heading}" Margin="0,0,0,8" />
+          <TextBlock TextWrapping="Wrap"
+                     Text="Strongthium Labs makes small, focused software that does one job well, for the people who keep machines running. Everyone else is centralizing and harvesting data. We make software that runs on your own machines instead: your data and your keys never pass through us, and everything it does is shown, with the reason why." />
+          <TextBlock TextWrapping="Wrap" Margin="0,8,0,0"
+                     Text="The open-source tools, this one among them, are free. Every release is built by GitHub Actions from the source you can read." />
+          <TextBlock Style="{StaticResource Caption}" Margin="0,10,0,0">
+            <Hyperlink NavigateUri="https://strongthium.com" RequestNavigate="Link_RequestNavigate">strongthium.com</Hyperlink><Run Text="  ·  " />
+            <Hyperlink NavigateUri="https://strongthium.com/about" RequestNavigate="Link_RequestNavigate">About us</Hyperlink><Run Text="  ·  " />
+            <Hyperlink NavigateUri="https://github.com/strongthium" RequestNavigate="Link_RequestNavigate">All our free tools</Hyperlink>
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
+      <!-- What else Strongthium makes -->
+      <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="More from Strongthium" Style="{StaticResource Heading}" Margin="0,0,0,2" />
+          <TextBlock Text="Software for running your own servers and talking to your customers. Every one has a free edition, with no time limit." Style="{StaticResource Caption}" Margin="0,0,0,10" />
+          <UniformGrid Columns="2">
+            <StackPanel Margin="0,0,16,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/linux-server-firewall" RequestNavigate="Link_RequestNavigate">Strongthium Guard</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="A firewall for Linux servers: locks them down, reads their logs and shuts out whoever attacks them, within seconds." />
+            </StackPanel>
+            <StackPanel Margin="0,0,0,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/self-hosted-mail-server" RequestNavigate="Link_RequestNavigate">Strongthium Mail</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="A mail server of your own, for Linux and Windows, that tells you exactly why it refused what it refused." />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/self-hosted-live-chat" RequestNavigate="Link_RequestNavigate">Strongthium Chat</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="Live chat you host yourself: your websites and text messages in one inbox, answered from Windows or a browser." />
+            </StackPanel>
+            <StackPanel>
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/windows-ssh-client" RequestNavigate="Link_RequestNavigate">Strongthium Remote</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="An SSH client for Windows: terminal, file manager, editor, task manager, database client and remote desktop, in tabs." />
+            </StackPanel>
+          </UniformGrid>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Style="{StaticResource Caption}" Margin="4,4,0,0">
+        <Hyperlink NavigateUri="https://github.com/strongthium/health-reminder" RequestNavigate="Link_RequestNavigate">Source code</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://github.com/strongthium/health-reminder/blob/master/LICENSE" RequestNavigate="Link_RequestNavigate">License</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://github.com/strongthium/.github/blob/main/SECURITY.md" RequestNavigate="Link_RequestNavigate">Report a vulnerability</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://dev.to/strongthium" RequestNavigate="Link_RequestNavigate">Dev.to</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://x.com/strongthium" RequestNavigate="Link_RequestNavigate">X</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://www.youtube.com/@StrongthiumLabs" RequestNavigate="Link_RequestNavigate">YouTube</Hyperlink><Run Text="  ·  " />
+        <Hyperlink NavigateUri="https://bsky.app/profile/strongthium.com" RequestNavigate="Link_RequestNavigate">Bluesky</Hyperlink>
+      </TextBlock>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

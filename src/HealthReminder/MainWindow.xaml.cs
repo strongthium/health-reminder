@@ -19,19 +19,19 @@ internal static class Ui
 }
 
 /// <summary>
-/// The reminders and the day: Today, Reminders, Eat &amp; drink, Menu, Groceries, Exercise, Smoking, Stats, History and Settings, chosen down the side. Closing it
+/// The reminders and the day: Today, Reminders, Eat &amp; drink, Menu, Groceries, Exercise, Smoking, Stats, History, Settings and About, chosen down the side. Closing it
 /// hides it; the reminders keep running in the tray.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    public const int TodayPage = 0, RemindersPage = 1, EatDrinkPage = 2, MenuPage = 3, GroceriesPage = 4, ExercisePage = 5, SmokingPage = 6, StatsPage = 7, HistoryPage = 8, SettingsPage = 9;
+    public const int TodayPage = 0, RemindersPage = 1, EatDrinkPage = 2, MenuPage = 3, GroceriesPage = 4, ExercisePage = 5, SmokingPage = 6, StatsPage = 7, HistoryPage = 8, SettingsPage = 9, AboutPage = 10;
 
     private readonly RadioButton[] nav;
     private readonly Func<FrameworkElement>[] makers =
     [
-        () => new TodayPage(), () => new RemindersPage(), () => new EatDrinkView(), () => new MenuPage(), () => new GroceriesPage(), () => new ExercisePage(), () => new SmokingPage(), () => new StatsPage(), () => new HistoryPage(), () => new SettingsPage(),
+        () => new TodayPage(), () => new RemindersPage(), () => new EatDrinkView(), () => new MenuPage(), () => new GroceriesPage(), () => new ExercisePage(), () => new SmokingPage(), () => new StatsPage(), () => new HistoryPage(), () => new SettingsPage(), () => new AboutPage(),
     ];
-    private readonly FrameworkElement?[] pages = new FrameworkElement?[10];
+    private readonly FrameworkElement?[] pages = new FrameworkElement?[11];
     private bool allowClose;
 
     public MainWindow()
@@ -39,7 +39,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Icon = App.Icon;
         Logo.Source = App.Icon;
-        nav = [TodayNav, RemindersNav, EatDrinkNav, MenuNav, GroceriesNav, ExerciseNav, SmokingNav, StatsNav, HistoryNav, SettingsNav];
+        nav = [TodayNav, RemindersNav, EatDrinkNav, MenuNav, GroceriesNav, ExerciseNav, SmokingNav, StatsNav, HistoryNav, SettingsNav, AboutNav];
         Navigate(TodayPage);
     }
 

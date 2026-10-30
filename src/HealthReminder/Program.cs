@@ -32,6 +32,10 @@ internal static class Program
             DataDirectory = Path.GetFullPath(args[data + 1]);
             OwnDataDirectory = true;
         }
+        // Updated: the copy that started this one is quitting, and lets go of the lock as it does.
+        var waitFor = Array.IndexOf(args, "--wait-for");
+        Updater.Tidy(waitFor >= 0 && waitFor + 1 < args.Length && int.TryParse(args[waitFor + 1], out var pid) ? pid : null);
+
         Directory.CreateDirectory(DataDirectory);
 
         // One copy a user: two would ring twice. Starting it again shows the copy that's running.

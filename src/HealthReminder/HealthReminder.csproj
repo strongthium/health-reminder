@@ -50,6 +50,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\health-reminder.png" />
+    <Resource Include="Assets\strongthium-banner.jpg" />
     <Resource Include="Assets\health-reminder.ico" />
   </ItemGroup>
 
