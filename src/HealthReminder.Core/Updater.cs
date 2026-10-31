@@ -188,13 +188,31 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
                 // It has quit already.
             }
         }
+        if (Environment.ProcessPath is { } path) DeleteOld(path + ".old", keepTrying: waitFor is not null);
+    }
+
+    /// <summary>Deletes the old program's file. Windows, or something looking at the file, can hold on to it for a moment
+    /// after the program has quit, so a copy that has just waited for one keeps trying for a while, without holding up
+    /// its own start. Whatever is still there is deleted the next time the program starts.</summary>
+    internal static void DeleteOld(string old, bool keepTrying)
+    {
+        if (TryDelete(old) || !keepTrying) return;
+        new Thread(() =>
+        {
+            for (var tries = 0; tries < 120 && !TryDelete(old); tries++) Thread.Sleep(250);
+        }) { IsBackground = true, Name = "delete the old program" }.Start();
+    }
+
+    private static bool TryDelete(string path)
+    {
         try
         {
-            if (Environment.ProcessPath is { } path) File.Delete(path + ".old");
+            File.Delete(path);
+            return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // Still going, or not ours to delete: next time.
+            return false;
         }
     }
 

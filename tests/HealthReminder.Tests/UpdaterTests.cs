@@ -176,6 +176,30 @@ public sealed class UpdaterTests : IDisposable
         Assert.Equal(expected, Updater.HashIn(sums, name));
 
     [Fact]
+    public async Task AnOldFileHeldForAMomentIsDeletedOnceItIsLetGo()
+    {
+        var old = Path.Combine(folder, Program + ".old");
+        File.WriteAllText(old, "old");
+        using (new FileStream(old, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Updater.DeleteOld(old, keepTrying: true);
+            await Task.Delay(600, TestContext.Current.CancellationToken);
+            Assert.True(File.Exists(old));
+        }
+        for (var i = 0; i < 40 && File.Exists(old); i++) await Task.Delay(100, TestContext.Current.CancellationToken);
+        Assert.False(File.Exists(old));
+    }
+
+    [Fact]
+    public void AnOldFileHeldWithoutAnUpdateIsLeftForNextTime()
+    {
+        var old = Path.Combine(folder, Program + ".old");
+        File.WriteAllText(old, "old");
+        using (new FileStream(old, FileMode.Open, FileAccess.Read, FileShare.None)) Updater.DeleteOld(old, keepTrying: false);
+        Assert.True(File.Exists(old));
+    }
+
+    [Fact]
     public void TheRunningVersionHasThreeParts() => Assert.Equal(3, Updater.RunningVersion.ToString(3).Split('.').Length);
 
     [Fact]
