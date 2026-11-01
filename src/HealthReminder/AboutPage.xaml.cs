@@ -25,7 +25,7 @@ public sealed partial class AboutPage : UserControl
     {
         InitializeComponent();
         ProgramIcon.Source = App.Icon;
-        VersionText.Text = $"Version {Updater.RunningVersion.ToString(3)}";
+        VersionText.Text = $"Version {Updater.RunningVersion.ToString(4)}";
         Loaded += async (_, _) =>
         {
             if (!busy && (asked is null || DateTime.UtcNow - asked > AskAgainAfter)) await CheckAsync();
@@ -62,11 +62,11 @@ public sealed partial class AboutPage : UserControl
     private void ShowAnswer()
     {
         if (release is null) return;
-        var latest = release.Version.ToString(3);
+        var latest = release.Version.ToString(4);
         NotesButton.Visibility = Visibility.Visible;
         if (release.Version > Updater.RunningVersion)
         {
-            Show(Newer, $"Version {latest} is out. You have {Updater.RunningVersion.ToString(3)}.",
+            Show(Newer, $"Version {latest} is out. You have {Updater.RunningVersion.ToString(4)}.",
                 "Updating downloads it from GitHub, checks it against the release's checksums, replaces this program and starts it again.");
             UpdateButton.Content = $"Update to {latest} and restart";
             UpdateButton.Visibility = Visibility.Visible;
@@ -87,7 +87,7 @@ public sealed partial class AboutPage : UserControl
     private async void Update_Click(object sender, RoutedEventArgs e)
     {
         if (release is null || Environment.ProcessPath is not { } running) return;
-        var latest = release.Version.ToString(3);
+        var latest = release.Version.ToString(4);
         busy = true;
         UpdateButton.Visibility = CheckButton.Visibility = Visibility.Collapsed;
         UpdateBar.IsIndeterminate = false;

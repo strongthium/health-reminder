@@ -17,8 +17,8 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
 {
     private static readonly TimeSpan AskTimeout = TimeSpan.FromSeconds(20);
 
-    /// <summary>The version that's running, as major.minor.patch.</summary>
-    public static Version RunningVersion { get; } = Plain(Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0));
+    /// <summary>The version that's running, as major.minor.patch.revision.</summary>
+    public static Version RunningVersion { get; } = Plain(Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0, 0));
 
     /// <summary>The releases' page on GitHub, for when one can't be installed from here.</summary>
     public string ReleasesPage => $"https://github.com/{repository}/releases/latest";
@@ -28,7 +28,7 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
     public static HttpClient NewClient(string program)
     {
         var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd($"{program}/{RunningVersion.ToString(3)}");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"{program}/{RunningVersion.ToString(4)}");
         return client;
     }
 
@@ -47,7 +47,7 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
         using var json = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(timeout.Token));
         var root = json.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
-        if (!Version.TryParse(tag.TrimStart('v'), out var version) || version.Build < 0 || version.Revision >= 0)
+        if (!Version.TryParse(tag.TrimStart('v'), out var version) || version.Revision < 0)
             throw new InvalidDataException($"GitHub's latest release is called \"{tag}\", which isn't a version.");
 
         var ownFiles = $"https://github.com/{repository}/releases/download/";
@@ -85,7 +85,7 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
     /// <summary>Downloads a release's archive into a folder, checks it and says where it is.</summary>
     public async Task<string> DownloadAsync(Release release, string folder, IProgress<double>? progress = null, CancellationToken cancel = default)
     {
-        var name = archiveName(release.Version.ToString(3));
+        var name = archiveName(release.Version.ToString(4));
         if (!release.Files.TryGetValue(name, out var url)) throw new InvalidDataException($"The release has no {name}.");
         if (!release.Files.TryGetValue("SHA256SUMS", out var sumsUrl)) throw new InvalidDataException("The release has no SHA256SUMS to check it against.");
 
@@ -230,5 +230,5 @@ public sealed class Updater(HttpClient http, string repository, Func<string, str
         _ => exception.Message,
     };
 
-    private static Version Plain(Version version) => new(version.Major, version.Minor, Math.Max(version.Build, 0));
+    private static Version Plain(Version version) => new(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
 }

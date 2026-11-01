@@ -64,7 +64,7 @@ jobs:
         run: |
           version=$(tr -d ' \r\n' < VERSION)
           if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::v$version is already released. Raise the version (build.ps1 -Bump patch) and push again."
+            echo "::error::v$version is already released. Raise the version (build.ps1 -Bump revision) and push again."
             exit 1
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"

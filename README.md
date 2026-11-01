@@ -635,14 +635,14 @@ You need Windows and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```
 .\build.ps1                 # tests, then the program into public\  (or double-click build.cmd)
-.\build.ps1 -Bump patch     # the same as a new version: 1.0.0 -> 1.0.1
+.\build.ps1 -Bump revision  # the same as a new version: 1.0.0.0 -> 1.0.0.1
 ```
 
 `build.ps1` runs the tests (`-SkipTests` skips them), publishes the program, and replaces what's in
 [`public/`](public) with it, its `SHA256SUMS` and the `VERSION` it was built as.
 
-The version is in [`VERSION`](VERSION), `major.minor.patch`, and every build reads it. `-Bump major|minor|patch` or
-`-Version 2.0.0` builds a new one, and `VERSION` is changed once that build has succeeded, so the version in the
+The version is in [`VERSION`](VERSION), `major.minor.patch.revision`, and every build reads it. `-Bump major|minor|patch|revision` or
+`-Version 2.0.0.0` builds a new one, and `VERSION` is changed once that build has succeeded, so the version in the
 repository is always the one in `public/`.
 
 For working on it:
@@ -667,7 +667,7 @@ dotnet run --project src/HealthReminder
 1. runs the tests on Windows;
 2. builds the x64 program, one `.exe`;
 3. publishes release `v<VERSION>` with its zip and `SHA256SUMS`. A version is released once: to release
-   again, raise it first (`build.ps1 -Bump patch`).
+   again, raise it first (`build.ps1 -Bump revision`).
 
 ## More from Strongthium
 

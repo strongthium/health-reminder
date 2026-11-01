@@ -62,7 +62,7 @@ public sealed partial class DailyMed(HttpClient http)
     public static HttpClient CreateHttpClient()
     {
         var http = new HttpClient { BaseAddress = new Uri(BaseUrl), Timeout = TimeSpan.FromSeconds(30) };
-        var version = typeof(DailyMed).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        var version = typeof(DailyMed).Assembly.GetName().Version?.ToString(4) ?? "1.0.0.0";
         http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("health-reminder", version));
         http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("(+https://github.com/strongthium/health-reminder)"));
         return http;

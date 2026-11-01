@@ -11,22 +11,22 @@
     from VERSION; -Bump or -Version builds a new one, and VERSION is changed once the build succeeds.
 
 .PARAMETER Bump
-    Raises the version before building: major (2.0.0), minor (1.1.0) or patch (1.0.1).
+    Raises the version before building: major (2.0.0.0), minor (1.1.0.0), patch (1.0.1.0) or revision (1.0.0.1).
 
 .PARAMETER Version
-    Sets the version before building, as major.minor.patch.
+    Sets the version before building, as major.minor.patch.revision.
 
 .PARAMETER SkipTests
     Builds without running the tests first.
 
 .EXAMPLE
     .\build.ps1
-    .\build.ps1 -Bump patch
+    .\build.ps1 -Bump revision
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('major', 'minor', 'patch')] [string] $Bump,
-    [ValidatePattern('^\d+\.\d+\.\d+$')] [string] $Version,
+    [ValidateSet('major', 'minor', 'patch', 'revision')] [string] $Bump,
+    [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')] [string] $Version,
     [switch] $SkipTests
 )
 
@@ -55,13 +55,14 @@ if (-not ($sdks | Where-Object { $_ -match '^10\.' })) {
 
 # The version: VERSION, changed first by -Version or -Bump.
 $current = (Get-Content $versionFile -Raw).Trim()
-if ($current -notmatch '^(\d+)\.(\d+)\.(\d+)$') { throw "VERSION holds '$current', not major.minor.patch." }
-$major, $minor, $patch = [int]$Matches[1], [int]$Matches[2], [int]$Matches[3]
+if ($current -notmatch '^(\d+)\.(\d+)\.(\d+)\.(\d+)$') { throw "VERSION holds '$current', not major.minor.patch.revision." }
+$major, $minor, $patch, $revision = [int]$Matches[1], [int]$Matches[2], [int]$Matches[3], [int]$Matches[4]
 $next = $current
 if ($Version) { $next = $Version }
-elseif ($Bump -eq 'major') { $next = "$($major + 1).0.0" }
-elseif ($Bump -eq 'minor') { $next = "$major.$($minor + 1).0" }
-elseif ($Bump -eq 'patch') { $next = "$major.$minor.$($patch + 1)" }
+elseif ($Bump -eq 'major') { $next = "$($major + 1).0.0.0" }
+elseif ($Bump -eq 'minor') { $next = "$major.$($minor + 1).0.0" }
+elseif ($Bump -eq 'patch') { $next = "$major.$minor.$($patch + 1).0" }
+elseif ($Bump -eq 'revision') { $next = "$major.$minor.$patch.$($revision + 1)" }
 if ($next -ne $current) { Write-Host "Version $current -> $next (VERSION is changed once the build succeeds)" }
 Write-Host "Building health-reminder $next"
 

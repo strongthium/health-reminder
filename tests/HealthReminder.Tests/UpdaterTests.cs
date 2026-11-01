@@ -10,7 +10,7 @@ public sealed class UpdaterTests : IDisposable
 {
     private const string Repository = "strongthium/test";
     private const string Program = "test.exe";
-    private const string Files = "https://github.com/strongthium/test/releases/download/v2.3.4/";
+    private const string Files = "https://github.com/strongthium/test/releases/download/v2.3.4.5/";
     private static string Archive(string version) => $"test-{version}-win-x64.zip";
 
     private readonly string folder = Directory.CreateTempSubdirectory("updater-tests-").FullName;
@@ -32,12 +32,12 @@ public sealed class UpdaterTests : IDisposable
 
     private static HttpResponseMessage Ok(byte[] bytes) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
 
-    private static string LatestJson(string tag = "v2.3.4", string filesAt = Files) => $$"""
+    private static string LatestJson(string tag = "v2.3.4.5", string filesAt = Files) => $$"""
         {
           "tag_name": "{{tag}}",
           "html_url": "https://github.com/strongthium/test/releases/tag/{{tag}}",
           "assets": [
-            { "name": "test-2.3.4-win-x64.zip", "browser_download_url": "{{filesAt}}test-2.3.4-win-x64.zip" },
+            { "name": "test-2.3.4.5-win-x64.zip", "browser_download_url": "{{filesAt}}test-2.3.4.5-win-x64.zip" },
             { "name": "SHA256SUMS", "browser_download_url": "{{filesAt}}SHA256SUMS" }
           ]
         }
@@ -48,8 +48,8 @@ public sealed class UpdaterTests : IDisposable
         using var memory = new MemoryStream();
         using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
         {
-            Add(zip, $"test-2.3.4-win-x64/{program}", text);
-            Add(zip, "test-2.3.4-win-x64/README.md", "Not the program.");
+            Add(zip, $"test-2.3.4.5-win-x64/{program}", text);
+            Add(zip, "test-2.3.4.5-win-x64/README.md", "Not the program.");
         }
         return memory.ToArray();
 
@@ -65,13 +65,13 @@ public sealed class UpdaterTests : IDisposable
     private static FakeGitHub Serving(byte[] zip, string? sums = null) => new(url =>
     {
         if (url.StartsWith("https://api.github.com/", StringComparison.Ordinal)) return Ok(LatestJson());
-        if (url.EndsWith("SHA256SUMS", StringComparison.Ordinal)) return Ok(sums ?? $"{Convert.ToHexString(SHA256.HashData(zip))}  {Archive("2.3.4")}\n");
+        if (url.EndsWith("SHA256SUMS", StringComparison.Ordinal)) return Ok(sums ?? $"{Convert.ToHexString(SHA256.HashData(zip))}  {Archive("2.3.4.5")}\n");
         return Ok(zip);
     });
 
-    private static readonly Release Latest = new(new Version(2, 3, 4), "https://github.com/strongthium/test/releases/tag/v2.3.4", new Dictionary<string, string>
+    private static readonly Release Latest = new(new Version(2, 3, 4, 5), "https://github.com/strongthium/test/releases/tag/v2.3.4.5", new Dictionary<string, string>
     {
-        [Archive("2.3.4")] = Files + Archive("2.3.4"),
+        [Archive("2.3.4.5")] = Files + Archive("2.3.4.5"),
         ["SHA256SUMS"] = Files + "SHA256SUMS",
     });
 
@@ -80,8 +80,8 @@ public sealed class UpdaterTests : IDisposable
     {
         var github = new FakeGitHub(_ => Ok(LatestJson()));
         var release = await UpdaterFor(github).LatestAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(new Version(2, 3, 4), release.Version);
-        Assert.Equal("https://github.com/strongthium/test/releases/tag/v2.3.4", release.Page);
+        Assert.Equal(new Version(2, 3, 4, 5), release.Version);
+        Assert.Equal("https://github.com/strongthium/test/releases/tag/v2.3.4.5", release.Page);
         Assert.Equal(2, release.Files.Count);
         Assert.Equal(["https://api.github.com/repos/strongthium/test/releases/latest"], github.Asked);
     }
@@ -89,7 +89,7 @@ public sealed class UpdaterTests : IDisposable
     [Theory]
     [InlineData("nightly")]
     [InlineData("v2.3")]
-    [InlineData("v2.3.4.5")]
+    [InlineData("v2.3.4")]
     public async Task ATagThatIsNotAVersionIsAProblem(string tag)
     {
         var github = new FakeGitHub(_ => Ok(LatestJson(tag)));
@@ -99,7 +99,7 @@ public sealed class UpdaterTests : IDisposable
     [Fact]
     public async Task FilesFromAnywhereElseAreLeftOut()
     {
-        var github = new FakeGitHub(_ => Ok(LatestJson(filesAt: "https://example.com/strongthium/test/releases/download/v2.3.4/")));
+        var github = new FakeGitHub(_ => Ok(LatestJson(filesAt: "https://example.com/strongthium/test/releases/download/v2.3.4.5/")));
         var release = await UpdaterFor(github).LatestAsync(TestContext.Current.CancellationToken);
         Assert.Empty(release.Files);
     }
@@ -135,7 +135,7 @@ public sealed class UpdaterTests : IDisposable
     {
         var running = Path.Combine(folder, Program);
         File.WriteAllText(running, "old");
-        var github = Serving(Zip(Program, "tampered with"), $"{new string('0', 64)}  {Archive("2.3.4")}\n");
+        var github = Serving(Zip(Program, "tampered with"), $"{new string('0', 64)}  {Archive("2.3.4.5")}\n");
 
         await Assert.ThrowsAsync<InvalidDataException>(() => UpdaterFor(github).InstallAsync(Latest, running, cancel: TestContext.Current.CancellationToken));
 
@@ -161,7 +161,7 @@ public sealed class UpdaterTests : IDisposable
     {
         var running = Path.Combine(folder, Program);
         File.WriteAllText(running, "old");
-        var unchecked_ = Latest with { Files = new Dictionary<string, string> { [Archive("2.3.4")] = Files + Archive("2.3.4") } };
+        var unchecked_ = Latest with { Files = new Dictionary<string, string> { [Archive("2.3.4.5")] = Files + Archive("2.3.4.5") } };
 
         await Assert.ThrowsAsync<InvalidDataException>(() => UpdaterFor(Serving(Zip(Program, "new"))).InstallAsync(unchecked_, running, cancel: TestContext.Current.CancellationToken));
 
@@ -200,7 +200,7 @@ public sealed class UpdaterTests : IDisposable
     }
 
     [Fact]
-    public void TheRunningVersionHasThreeParts() => Assert.Equal(3, Updater.RunningVersion.ToString(3).Split('.').Length);
+    public void TheRunningVersionHasFourParts() => Assert.Equal(4, Updater.RunningVersion.ToString(4).Split('.').Length);
 
     [Fact]
     public void BeingUnableToWriteSaysWhere()

@@ -92,7 +92,7 @@ public sealed partial class SettingsPage : UserControl, IPage
         loading = false;
 
         DataFolder.Text = "Your reminders, readings, photos and videos are kept on this computer only, in " + app.Database.Directory;
-        VersionText.Text = "Version " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "");
+        VersionText.Text = "Version " + (typeof(App).Assembly.GetName().Version?.ToString(4) ?? "");
         Logo.Source = App.Icon;
         CameraBox.ItemsSource = new[] { "Looking for cameras…" };
         CameraBox.SelectedIndex = 0;
