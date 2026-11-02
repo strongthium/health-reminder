@@ -71,6 +71,34 @@ internal static class PantryLog
 
     public static void Forget(StockedThing thing) => Database.Forget(thing);
 
+    /// <summary>What could be tidied in the history.</summary>
+    public static HistoryTidy Tidy() => Pantry.Tidy(History(), Items(), Database.EatenNames());
+
+    /// <summary>The history tidied: what's picked is taken out of it, and the names spelled as they are now.</summary>
+    public static void Tidied(IEnumerable<StockedThing> leftovers, IEnumerable<(string Name, string Spelled)> spellings)
+    {
+        foreach (var thing in leftovers) Database.Forget(thing);
+        foreach (var (name, spelled) in spellings) Database.Respell(name, spelled);
+    }
+
+    /// <summary>How much there was to tidy when it was last looked at and left: it's offered again only with more.</summary>
+    public static int TidyPassed
+    {
+        get => int.TryParse(Database.Setting("history_tidy_passed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : 0;
+        set => Database.SetSetting("history_tidy_passed", value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The names and brands there have been, as they're spelled now, to read what's typed by.</summary>
+    public static (List<string> Names, List<string> Brands) Known()
+    {
+        var kitchen = Items();
+        var history = History();
+        var list = Database.Groceries();
+        return (kitchen.Select(p => p.Name).Concat(history.Select(t => t.Name)).Concat(Database.GroceryNames()).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            kitchen.Select(p => p.Note ?? "").Concat(history.Select(t => t.Note)).Concat(list.Select(g => g.Note ?? ""))
+                .Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+    }
+
     private static string PutKey(string name) => "put:" + name.Trim().ToLowerInvariant();
 
     /// <summary>How something was put away the last time, by hand: the place (while it's there) and the group, and

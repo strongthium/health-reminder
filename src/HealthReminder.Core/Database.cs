@@ -822,6 +822,9 @@ public sealed class Database : IDisposable
     {
         lock (gate)
         {
+            var was = item.Id == 0 ? null : KeptAs(item.Id);
+            // Something new of a name there's been is spelled the way it's been.
+            if (item.Id == 0 && SpelledBefore(item.Name) is { } spelled) item = item with { Name = spelled };
             using var command = connection.CreateCommand();
             const string names = "name, amount, unit, use_by, counted, unsure, added, frozen, use_by_set, place, icon, color, food_group, "
                                + "note, packs, pack_word, size, size_unit, size_of, per_pack";
@@ -855,9 +858,85 @@ public sealed class Database : IDisposable
             command.Parameters.AddWithValue("$counted", item.Counted.ToString("s", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("$unsure", item.Unsure);
             var saved = item with { Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) };
+            if (was is { } before) Renamed(before, saved);
             Stock(saved, "", null);
             return saved;
         }
+    }
+
+    /// <summary>The name and brand something in the kitchen has now; null when it isn't there.</summary>
+    private (string Name, string Note)? KeptAs(long id)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name, coalesce(note, '') FROM pantry WHERE id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        using var r = command.ExecuteReader();
+        return r.Read() ? (r.GetString(0), r.GetString(1)) : null;
+    }
+
+    private string? SpelledBefore(string name)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM stocked WHERE name = $name AND forgotten = 0 ORDER BY last DESC LIMIT 1";
+        command.Parameters.AddWithValue("$name", name.Trim());
+        return command.ExecuteScalar() as string;
+    }
+
+    /// <summary>
+    /// Something in the kitchen given another name or brand: what's kept of it goes with it, rather than staying behind
+    /// as something else that was had. Spelled another way, everything of that name is spelled the new way. Another bag
+    /// still called what it was keeps what's kept under that name; and with no other of the old name left, the list and
+    /// the prices paid go with it too.
+    /// </summary>
+    private void Renamed((string Name, string Note) was, PantryItem item)
+    {
+        var (name, note) = (item.Name.Trim(), item.Note?.Trim() ?? "");
+        if (was == (name, note)) return;
+        var sameName = name.Equals(was.Name, StringComparison.OrdinalIgnoreCase);
+        var sameNote = note.Equals(was.Note, StringComparison.OrdinalIgnoreCase);
+        void Run(string sql)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            var p = command.Parameters;
+            p.AddWithValue("$id", item.Id);
+            p.AddWithValue("$name", name);
+            p.AddWithValue("$note", note);
+            p.AddWithValue("$wasName", was.Name);
+            p.AddWithValue("$wasNote", was.Note);
+            command.ExecuteNonQuery();
+        }
+        long Others(string where)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT count(*) FROM pantry WHERE id <> $id AND name = $wasName COLLATE NOCASE" + where;
+            command.Parameters.AddWithValue("$id", item.Id);
+            command.Parameters.AddWithValue("$wasName", was.Name);
+            command.Parameters.AddWithValue("$wasNote", was.Note);
+            return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        if (sameName && name != was.Name)
+            Run("""
+                UPDATE pantry SET name = $name WHERE name = $wasName COLLATE NOCASE;
+                UPDATE stocked SET name = $name WHERE name = $wasName COLLATE NOCASE;
+                UPDATE grocery SET name = $name WHERE name = $wasName COLLATE NOCASE;
+                """);
+        if (sameName && sameNote) return;
+        if (Others(" AND coalesce(note, '') = $wasNote COLLATE NOCASE") == 0)
+            Run("""
+                INSERT INTO stocked (name, note, quantity, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, bought, first, last, forgotten)
+                    SELECT $name, $note, quantity, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, bought, first, last, forgotten
+                    FROM stocked WHERE name = $wasName AND note = $wasNote
+                    ON CONFLICT (name, note) DO UPDATE SET
+                        quantity = CASE WHEN quantity = '' OR (excluded.quantity <> '' AND excluded.last > last) THEN excluded.quantity ELSE quantity END,
+                        bought = bought + excluded.bought,
+                        first = min(first, excluded.first),
+                        last = max(last, excluded.last),
+                        forgotten = min(forgotten, excluded.forgotten);
+                DELETE FROM stocked WHERE name = $wasName AND note = $wasNote;
+                UPDATE grocery SET note = nullif($note, '') WHERE $wasNote <> '' AND name = $wasName COLLATE NOCASE AND note = $wasNote COLLATE NOCASE;
+                """);
+        if (!sameName && Others("") == 0) Run("UPDATE grocery SET name = $name WHERE name = $wasName COLLATE NOCASE");
     }
 
     /// <summary>Something put in the kitchen as bought: how much came, and when, kept to buy it again.</summary>
@@ -868,8 +947,8 @@ public sealed class Database : IDisposable
 
     /// <summary>
     /// What's kept of something that's been in the kitchen, by its name and brand: how it's kept (its look, as it is
-    /// now), and, when it was bought (<paramref name="boughtAt"/>), how much came and when, one time more; bought, it's
-    /// back in the history if it was taken out.
+    /// now, and its name and brand spelled as they are now), and, when it was bought (<paramref name="boughtAt"/>), how
+    /// much came and when, one time more; bought, it's back in the history if it was taken out.
     /// </summary>
     private void Stock(PantryItem item, string quantity, DateTime? boughtAt)
     {
@@ -878,6 +957,7 @@ public sealed class Database : IDisposable
             INSERT INTO stocked (name, note, quantity, icon, color, food_group, place, pack_word, size, size_unit, size_of, per_pack, bought, first, last)
             VALUES ($name, $note, $quantity, $icon, $color, $group, $place, $packWord, $size, $sizeUnit, $sizeOf, $perPack, $bought, $at, $at)
             ON CONFLICT (name, note) DO UPDATE SET
+                name = excluded.name, note = excluded.note,
                 icon = excluded.icon, color = excluded.color, food_group = excluded.food_group, place = excluded.place,
                 pack_word = excluded.pack_word, size = excluded.size, size_unit = excluded.size_unit, size_of = excluded.size_of,
                 per_pack = excluded.per_pack,
@@ -923,6 +1003,36 @@ public sealed class Database : IDisposable
             command.Parameters.AddWithValue("$name", thing.Name);
             command.Parameters.AddWithValue("$note", thing.Note);
             command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>A name spelled another way, wherever it's kept for buying again.</summary>
+    public void Respell(string name, string spelled)
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE stocked SET name = $spelled WHERE name = $name;
+                UPDATE grocery SET name = $spelled WHERE name = $name COLLATE NOCASE;
+                """;
+            command.Parameters.AddWithValue("$name", name);
+            command.Parameters.AddWithValue("$spelled", spelled);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>The names of everything that's been logged as eaten.</summary>
+    public List<string> EatenNames()
+    {
+        lock (gate)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM food_log UNION SELECT pantry FROM food_log WHERE pantry IS NOT NULL";
+            using var r = command.ExecuteReader();
+            var names = new List<string>();
+            while (r.Read()) names.Add(r.GetString(0));
+            return names;
         }
     }
 

@@ -243,12 +243,13 @@ public sealed partial class AlarmWindow : Window
         return added;
     }
 
-    /// <summary>After the reminders change: drops doses of reminders deleted or paused, shows edits.</summary>
+    /// <summary>After the reminders change: drops doses of reminders deleted or paused, and what no longer rings now that
+    /// tracking is stopped; shows edits.</summary>
     public void Keep(List<Reminder> reminders)
     {
         var kept = items
             .Select(item => (item, reminder: reminders.FirstOrDefault(m => m.Id == item.Reminder.Id && m.Active)))
-            .Where(x => x.reminder is not null && x.reminder.Times.Any(t => t.Time == TimeOnly.FromDateTime(x.item.Dose.Due)))
+            .Where(x => x.reminder is not null && x.reminder.Times.Any(t => t.Time == TimeOnly.FromDateTime(x.item.Dose.Due)) && App.Current.Schedule.Rings(x.item.Dose))
             .Select(x =>
             {
                 var item = Item(x.item.Dose with { Reminder = x.reminder! });

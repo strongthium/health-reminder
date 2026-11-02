@@ -17,6 +17,25 @@ public sealed class Schedule(Database database)
     public static readonly TimeSpan MissedAfter = TimeSpan.FromHours(12);
     private readonly Dictionary<string, DateTime> snoozed = [];
 
+    /// <summary>Whether the days are being kept track of, and from when the stats count.</summary>
+    public Tracking Tracking { get; } = new(database);
+
+    /// <summary>Whether it rings for this dose. Stopped, only medication, if that was kept on. Otherwise all but what's
+    /// from before a reset or while it was stopped; medication still does then, while it's still due.</summary>
+    public bool Rings(Dose dose)
+    {
+        var medication = dose.Reminder.Kind.IsMedication();
+        return Tracking.Stopped ? medication && Tracking.KeepMedication : medication || !Tracking.Excused(dose.Due);
+    }
+
+    /// <summary>Stopped now, and with <paramref name="reset"/> the stats counted from now. What's due and unanswered as
+    /// it stops doesn't go on to count as missed.</summary>
+    public void StopTracking(IEnumerable<Reminder> reminders, DateTime now, bool keepMedication, bool reset)
+    {
+        Tracking.Stop(Open(reminders, now).Select(d => d.Due).Append(now).Min(), keepMedication);
+        if (reset) Tracking.Reset(now);
+    }
+
     public void Snooze(Dose dose, DateTime until) => snoozed[dose.Key] = until;
 
     /// <summary>Records the dose as taken (eaten, drunk, injected, measured), with the reading, the site and the
@@ -33,15 +52,21 @@ public sealed class Schedule(Database database)
     }
 
     /// <summary>The doses to ring for now, oldest first: at most one a reminder.</summary>
-    public List<Dose> Due(IEnumerable<Reminder> reminders, DateTime now)
+    public List<Dose> Due(IEnumerable<Reminder> reminders, DateTime now) =>
+        Open(reminders, now)
+            .Where(Rings)
+            .Where(d => !snoozed.TryGetValue(d.Key, out var until) || until <= now)
+            .OrderBy(d => d.Due)
+            .ToList();
+
+    /// <summary>The doses at their time and not answered yet, and not yet missed.</summary>
+    private List<Dose> Open(IEnumerable<Reminder> reminders, DateTime now)
     {
         var logged = database.LoggedSince(now - MissedAfter - TimeSpan.FromDays(1));
         var doses = Doses(reminders, now.Date.AddDays(-1), now.Date).ToList();
         return doses
             .Where(d => d.Due <= now && now - d.Due < MissedAfter && d.Due >= Since(d.Reminder) && !Superseded(d, doses, now))
             .Where(d => !logged.ContainsKey(d.Key))
-            .Where(d => !snoozed.TryGetValue(d.Key, out var until) || until <= now)
-            .OrderBy(d => d.Due)
             .ToList();
     }
 
@@ -67,7 +92,18 @@ public sealed class Schedule(Database database)
                     ? new ScheduledDose(d, DoseState.Snoozed, until, null)
                     : new ScheduledDose(d, DoseState.Due, null, null);
             })
+            .Where(Counts)
             .ToList();
+    }
+
+    /// <summary>Whether a dose is on the days shown. Answered: unless it's from before the day of a reset (a pill taken
+    /// this morning still shows as taken). Unanswered: unless it's excused, once it would be missed; or, before that,
+    /// unless nothing's going to ring for it.</summary>
+    private bool Counts(ScheduledDose scheduled)
+    {
+        var due = scheduled.Dose.Due;
+        if (scheduled.Record is not null) return Tracking.From is not { } from || due >= from.Date;
+        return scheduled.State == DoseState.Missed ? !Tracking.Excused(due) : Rings(scheduled.Dose);
     }
 
     /// <summary>The dose of the same reminder just before this one, when it was missed: neither taken nor skipped. Only
@@ -79,8 +115,12 @@ public sealed class Schedule(Database database)
             .Where(d => d.Due < dose.Due && d.Due >= Since(d.Reminder))
             .OrderBy(d => d.Due)
             .LastOrDefault();
-        return previous is not null && !logged.ContainsKey(previous.Key) ? previous : null;
+        return previous is not null && !logged.ContainsKey(previous.Key) && !Tracking.Excused(previous.Due) ? previous : null;
     }
+
+    /// <summary>The next dose after <paramref name="now"/> it will ring for.</summary>
+    public Dose? NextRinging(IEnumerable<Reminder> reminders, DateTime now) =>
+        Doses(reminders, now.Date, now.Date.AddDays(7)).Where(d => d.Due > now && Rings(d)).OrderBy(d => d.Due).FirstOrDefault();
 
     /// <summary>The injection site to use next: the one after the site used last, among the reminder's sites.</summary>
     public string NextSite(Reminder reminder)

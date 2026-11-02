@@ -448,6 +448,28 @@ public static partial class Pantry
         return note.Length == 0 && before.FirstOrDefault() is { } last ? item with { Icon = last.Like.Icon, Color = last.Like.Color } : item;
     }
 
+    /// <summary>
+    /// What looks left over in the history, from when renaming something left its old name behind there: never bought,
+    /// not in the kitchen under that name and brand, and never logged as eaten; or, without a brand, never bought and
+    /// not in the kitchen without one, beside the same name with a brand. Names spelled two ways are spelled the way
+    /// the kitchen has them, or else the way with the most capitals, which someone took the trouble to type.
+    /// </summary>
+    public static HistoryTidy Tidy(IReadOnlyList<StockedThing> history, IReadOnlyList<PantryItem> kitchen, IEnumerable<string> eaten)
+    {
+        var same = StringComparer.OrdinalIgnoreCase;
+        var had = eaten.ToHashSet(same);
+        bool Here(StockedThing t) => kitchen.Any(p => same.Equals(p.Name, t.Name) && same.Equals(p.Note ?? "", t.Note));
+        bool Branded(StockedThing t) => history.Any(o => same.Equals(o.Name, t.Name) && o.Note.Length > 0);
+        var leftovers = history.Where(t => t.Bought == 0 && !Here(t) && (!had.Contains(t.Name) || t.Note.Length == 0 && Branded(t))).ToList();
+        var spellings = history.Except(leftovers).GroupBy(t => t.Name, same).SelectMany(group =>
+        {
+            var names = group.Select(t => t.Name).Distinct().ToList();
+            var spelled = kitchen.FirstOrDefault(p => same.Equals(p.Name, group.Key))?.Name ?? names.OrderByDescending(n => n.Count(char.IsUpper)).First();
+            return names.Where(n => n != spelled).Select(n => (n, spelled));
+        }).ToList();
+        return new HistoryTidy(leftovers, spellings);
+    }
+
     /// <summary>Some of something used up, eaten or thrown out: what that comes to (<see cref="Calories.Eat"/>), and
     /// what's left of it. Nothing typed is a usual amount (<see cref="Calories.UsualAmount"/>); null, with a problem,
     /// when what's typed isn't an amount, or is a weight of something counted whose weight isn't known (it would come
@@ -497,9 +519,12 @@ public static partial class Pantry
         return Regex.IsMatch(ingredient.ToLowerInvariant(), $@"\b{Regex.Escape(stem)}");
     }
 
-    /// <summary>What's in doubt and worth counting: a guess, or not counted for two weeks (unless there's none).</summary>
+    /// <summary>Whether it's in doubt and worth counting: a guess, or not counted for two weeks (unless there's none).</summary>
+    public static bool IsInDoubt(PantryItem item, DateTime now) => item.Unsure || now - item.Counted > Recount && item.Amount > 0;
+
+    /// <summary>What's in doubt and worth counting, by name.</summary>
     public static List<PantryItem> InDoubt(IEnumerable<PantryItem> pantry, DateTime now) =>
-        pantry.Where(p => p.Unsure || now - p.Counted > Recount && p.Amount > 0).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        pantry.Where(p => IsInDoubt(p, now)).OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
     /// <summary>What's in the kitchen, for meal ideas: what there's some of, soonest to use first, and what's frozen
     /// (it needs thawing first).</summary>

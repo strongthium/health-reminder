@@ -27,6 +27,30 @@
     <StackPanel Margin="36,28,36,36" MaxWidth="1000">
       <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
 
+      <!-- Tracking: stopping it, and starting the stats afresh. -->
+      <TextBlock Text="Tracking" Style="{StaticResource Section}" />
+      <Border Style="{StaticResource Row}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="&#xE9D9;" Style="{StaticResource RowIcon}" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock x:Name="TrackingTitle" Style="{StaticResource RowTitle}" />
+            <TextBlock x:Name="TrackingDetail" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="UndoResetButton" Content="Count everything again" Click="UndoReset_Click" Padding="12,6" Margin="0,0,8,0"
+                    ToolTip="Undo the reset: the stats count the days before it again" />
+            <Button Content="Reset stats…" Click="ResetStats_Click" Padding="12,6" Margin="0,0,8,0"
+                    ToolTip="Start the stats and what's been missed afresh from now. Nothing else changes." />
+            <Button x:Name="TrackingButton" Click="Tracking_Click" Padding="14,6" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
       <!-- Sounds -->
       <TextBlock Text="Sounds" Style="{StaticResource Section}" />
       <Border Style="{StaticResource Row}">

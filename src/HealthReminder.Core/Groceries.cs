@@ -51,3 +51,12 @@ public sealed record StockedThing(PantryItem Like, string Quantity, int Bought, 
     public string Name => Like.Name;
     public string Note => Like.Note ?? "";
 }
+
+/// <summary>
+/// What could be tidied in the history: <paramref name="Leftovers"/> to take out, and names to spell the way they're
+/// spelled now (<paramref name="Spellings"/>).
+/// </summary>
+public sealed record HistoryTidy(IReadOnlyList<StockedThing> Leftovers, IReadOnlyList<(string Name, string Spelled)> Spellings)
+{
+    public int Count => Leftovers.Count + Spellings.Count;
+}

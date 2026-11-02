@@ -48,6 +48,7 @@ internal static class FoodLog
     public static List<DayTally> Days(DateOnly first, DateTime now)
     {
         var app = App.Current;
+        first = app.Schedule.Tracking.Counted(first);
         var from = first.ToDateTime(TimeOnly.MinValue);
         var doses = app.Schedule.Days(app.Reminders, from, now);
         // The menu's recipes, a day at a time rather than a meal at a time.

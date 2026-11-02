@@ -48,6 +48,10 @@ public static partial class Quantities
         (["", "x", "each", "ea", "item", "pc", "pcs", "piece", "pack", "package", "box", "bag", "can", "tin", "jar", "bottle", "carton", "loaf", "loaves", "bunch"], Dimension.Count, 1),
     ];
 
+    /// <summary>The words that say what a number in a name is an amount of ("370 ml", "12 pack"): not the ones that also
+    /// mean something else there ("x", "c").</summary>
+    public static IEnumerable<string> UnitWords => Units.SelectMany(u => u.Names).Where(name => name.Length > 0 && name is not ("x" or "c"));
+
     [GeneratedRegex(@"^\s*(?:(?<times>\d+)\s*[x×*]\s*)?(?<number>\d+(?:[.,]\d+)?(?:\s+\d+/\d+|\s*[½¼¾⅓⅔])?|\d+/\d+|[½¼¾⅓⅔]|an?\b)\s*(?<unit>.*?)\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex QuantityPattern();
 

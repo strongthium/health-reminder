@@ -175,7 +175,8 @@ usual by this time of day, cigarettes closer together, fewer drinks than planned
 ![Stats, the charts](docs/stats-charts.png)
 
 A bar a day for the reminders done, skipped and missed, the cigarettes, the time between them, the drinks and the
-calories, over the last 7, 14 or 30 days.
+calories, over the last 7, 14 or 30 days. **Print** puts them on paper, or in a PDF, to take to a doctor. **Stop
+tracking**, in **Settings**, is for when you're not following it for a while, and offers to start the stats afresh.
 
 <img src="docs/log-food.png" alt="Log food" width="60%">
 
@@ -246,6 +247,13 @@ its own sound.
 
 A dose that isn't answered keeps ringing until it's 12 hours old or the next dose of the same reminder is due,
 whichever is first; it then counts as missed. A late reminder never asks for two doses of the same medication at once.
+
+**Stop tracking**, in **Settings**, is for a stretch you're not following it. Until **Start tracking**, nothing counts as
+missed, and meals, drinks, checks, exercise and kitchen alerts don't ring. Medication keeps ringing unless you untick
+that, and what you answer or log yourself is still kept. Stopping offers to reset the stats, and **Reset stats** does it
+any time: the stats and what's been missed then count from that moment. Your kitchen, groceries, reminders and settings
+aren't touched, and nothing is deleted, so the **History** page and the medication on hand are as they were, and
+**Count everything again** undoes it.
 
 The **Today** tab lists the day by time, with what became of each. Closing the window asks
 whether to keep `health-reminder` running in the tray or to quit, until you tell it not to ask again (**Settings**,
@@ -409,11 +417,25 @@ cart, **Got it** takes the amount bought and, if you like, its price; the list t
 kilogram (or gallon or pound, or each), and next time the same thing is on the list, what it cost last time.
 **Done shopping** clears what's been bought; its prices are kept.
 
+**Print**, beside **To buy**, puts the list on paper (or in a PDF) to take to the store: by section, as a store has
+them (fruit and vegetables, meat and fish, dairy and eggs…, each thing where your kitchen keeps it), or as one list;
+each with a box to tick, how much, what it cost last time if you like, and room to write what it cost now. Empty lines
+at the end are for what you think of there.
+
+A whole line can go under **What**, the way the package says it. `Bick's Gourmet Tangy Dill Relish 370 ml` reads as
+Gourmet Tangy Dill Relish, by Bick's, 370 mL, and the line under the boxes shows how it reads as it's typed. An amount
+with a unit is taken from either end, and a brand from either end once it's been seen. What could be read another way
+(a bare number, as in `Area 51`, or a first word like `Shepherd's`) is asked about first, and a name there's been before
+stays whole, so `7 Up` stays `7 Up` once it's known.
+
 **Bought before** keeps everything that's been in the kitchen, by name and brand, after it's used up and taken off:
 how much came the last time and what it cost, how many times it's been bought, and how much of it there is now. It
 shows what's run out (**Show all** shows the rest), each with **Add to list**, which puts the same one back on the list,
 its brand and as much as last time; bought, it's put away the way it was kept, with its picture and what one weighs.
-The **✕** takes something out of it until it's bought again.
+The **✕** takes something out of it until it's bought again. Renamed in the kitchen, it keeps its history under the new
+name, and the list and the prices paid go with it. When the list looks to have things left over (never bought, not in
+the kitchen, never logged as eaten) or a name spelled two ways, **Have a look** shows them, ticked, and **Tidy it** takes
+out what's still ticked.
 
 **Search** at the top shows only what matches, on the list, in the cart, bought before and in the kitchen, every place opened: a name
 or a brand ("pep" finds Pepsi and red peppers, "diet pep" just Diet Pepsi), or the start of the kind of food it is
@@ -499,9 +521,16 @@ isn't taken to keep food longer.
 
 Counts drift, so what's in doubt has a badge on its picture: an amount read from a photo, more used than was counted, or not
 counted for two weeks. Each thing can be counted on the spot (type what there is and **Set** it, say the amount is
-right with ✓, or take it off as none left), and
-a time a week is set aside for it (Sunday at 10:00 to begin with): when something's in doubt, an alert says what and
-about how long it takes, and opens the list.
+right with ✓, or take it off as none left). **To check**, beside **Your kitchen**, shows just those, and each goes from
+the list as it's counted. A time a week is set aside for it (Sunday at 10:00 to begin with): when something's in doubt,
+an alert says what and about how long it takes, and opens the kitchen showing just those, or prints a list of them.
+
+**On paper.** **Print**, beside **Your kitchen**, makes a list to take round the kitchen and write on: just what needs
+checking, or everything, from the places you tick, by place and then by group, as the page has them. Each line has a
+box to tick, what the program has (how much, when it was frozen, its best-before and why it's to be checked), and room
+to write how much there is, the best-before on the package and its name as the package has it. A list of everything has
+empty lines under each place for what's there that isn't on it. The pages show first, and print on any printer, or to
+a PDF with **Microsoft Print to PDF**.
 
 ### Help from Claude (optional)
 
@@ -567,6 +596,8 @@ The **Smoking** tab logs cigarettes, to see the pattern and cut down.
   cigarette's smoke across brands (Health Canada's intense machine-smoking method) and what each does.
 - **Cutting down, step by step**, rather than all at once: a goal of so many fewer a day each week (shown on the
   button), and alongside it, the body recalibrated one change a week.
+- **Print**: the numbers, a chart of cigarettes a day and of the time between them, and each day's count, first and
+  last, over the last 7, 14 or 30 days.
 
 ### Recalibrating the body
 
@@ -612,6 +643,8 @@ it, for anyone who wants a bridge on hard days.
   yesterday, so a bad day doesn't count against itself. A note comes up, there and on **Today**, when a medication was
   missed, when more were missed than usual, when there are more cigarettes than usual by this time of day (or fewer),
   when they're closer together, when yesterday had more than usual, few of the drinks, or more calories than planned.
+  **Print** puts the stats on paper or in a PDF: what stands out, the numbers, the charts you tick, each day in a
+  table, and what was missed, by name and time.
 
 ## About and updates
 

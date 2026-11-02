@@ -82,7 +82,7 @@ public sealed partial class SmokingPage : UserControl, IPage
         loading = false;
 
         var now = DateTime.Now;
-        var smokes = App.Database.Smokes(now.Date.AddDays(-28));
+        var smokes = App.Database.Smokes(App.Schedule.Tracking.Counted(now.Date.AddDays(-28)));
         var stats = Smoking.Stats(smokes, now);
         var open = SmokeLog.Open();
         LogButton.Content = open is not null ? "It's out" : App.SmokeTimed ? "Lighting one now" : "Log one now";
@@ -97,21 +97,9 @@ public sealed partial class SmokingPage : UserControl, IPage
         if (brand.PackPrice is { } price && brand.PerPack > 0)
             CostText.Text = ((decimal)(stats.PerDay * 7) * price / brand.PerPack).ToString("C0", CultureInfo.CurrentCulture);
 
-        DurationText.Text = stats.Duration is { } duration
-            ? $"{Minutes(duration)} on average over the last two weeks" + (stats.DurationBefore is { } before
-                ? $"; {Minutes(before)} the two weeks before ({(duration < before ? "quicker now" : duration > before ? "slower now" : "the same")})."
-                : ".")
-            : App.SmokeTimed ? "Not enough timed yet: click the button when you light one and again when it's out."
-            : "Turn on Time each one, above, to see this.";
-
+        DurationText.Text = DurationSummary(stats);
         var wake = WakeTime();
-        FirstText.Text = stats.FirstOfDay is { } first
-            ? $"Around {Format.Time(first)} on average." + (wake is { } up && first > up
-                ? first - up <= TimeSpan.FromMinutes(30)
-                    ? $" That's within half an hour of getting up ({Format.Time(up)}), a sign of strong dependence: the body wants nicotine back by morning."
-                    : $" That's {Since(first - up)} after getting up ({Format.Time(up)}); the longer the wait, the less dependent."
-                : "")
-            : "Not enough logged yet.";
+        FirstText.Text = FirstSummary(stats);
 
         AirText.Text = stats.Last is { } last
             ? AirAfter(smokes.Last(), last)
@@ -128,11 +116,7 @@ public sealed partial class SmokingPage : UserControl, IPage
             : "Log your cigarettes for a few days to match these to how much you smoke. To start with:";
         ReplacementList.ItemsSource = Smoking.Replacement(stats.PerDay, firstAfterWaking);
 
-        var goal = SmokeLog.Goal;
-        GoalText.Text = goal is { } g
-            ? $"Started {g.Start:MMM d} at about {g.From:0} a day. This week, no more than {target} a day"
-              + (target > 0 ? $"; none from about {g.Start.AddDays(7 * (int)Math.Ceiling(g.From / g.Fewer)):MMM d}." : ". You've reached none: keep it there.")
-            : "Pick how fast, then tick it: it starts from how much you smoke now, and the on-top button shows the day's count against it.";
+        GoalText.Text = GoalSummary() ?? "Pick how fast, then tick it: it starts from how much you smoke now, and the on-top button shows the day's count against it.";
 
         ShowSteps();
 
@@ -141,6 +125,35 @@ public sealed partial class SmokingPage : UserControl, IPage
         NoLog.Show(recent.Count == 0);
         WeekText.Text = "Each day this week: " + string.Join(" · ", Enumerable.Range(0, 7).Select(back => now.Date.AddDays(-back))
             .Select(day => $"{(day == now.Date ? "today" : day.ToString("ddd", CultureInfo.CurrentCulture))} {smokes.Count(s => s.Started.Date == day)}"));
+    }
+
+    /// <summary>How long one takes on average, and against the two weeks before.</summary>
+    public static string DurationSummary(SmokeStats stats) =>
+        stats.Duration is { } duration
+            ? $"{Minutes(duration)} on average over the last two weeks" + (stats.DurationBefore is { } before
+                ? $"; {Minutes(before)} the two weeks before ({(duration < before ? "quicker now" : duration > before ? "slower now" : "the same")})."
+                : ".")
+            : App.SmokeTimed ? "Not enough timed yet: click the button when you light one and again when it's out."
+            : "Turn on Time each one, above, to see this.";
+
+    /// <summary>When the first of the day is, and how long after getting up.</summary>
+    public static string FirstSummary(SmokeStats stats) =>
+        stats.FirstOfDay is { } first
+            ? $"Around {Format.Time(first)} on average." + (WakeTime() is { } up && first > up
+                ? first - up <= TimeSpan.FromMinutes(30)
+                    ? $" That's within half an hour of getting up ({Format.Time(up)}), a sign of strong dependence: the body wants nicotine back by morning."
+                    : $" That's {Since(first - up)} after getting up ({Format.Time(up)}); the longer the wait, the less dependent."
+                : "")
+            : "Not enough logged yet.";
+
+    /// <summary>Where cutting down is up to; null with no goal.</summary>
+    public static string? GoalSummary()
+    {
+        var target = SmokeLog.TargetToday();
+        return SmokeLog.Goal is { } g
+            ? $"Started {g.Start:MMM d} at about {g.From:0} a day. This week, no more than {target} a day"
+              + (target > 0 ? $"; none from about {g.Start.AddDays(7 * (int)Math.Ceiling(g.From / g.Fewer)):MMM d}." : ". You've reached none: keep it there.")
+            : null;
     }
 
     /// <summary>What the smoke does, and the steps against it: those started, the one due, and the rest.</summary>
@@ -195,6 +208,8 @@ public sealed partial class SmokingPage : UserControl, IPage
     }
 
     private void Log_Click(object sender, RoutedEventArgs e) => SmokeLog.Click();
+
+    private void Print_Click(object sender, RoutedEventArgs e) => Printing.Smoking(Window.GetWindow(this), StatsPage.SavedDays);
 
     private void ButtonBox_Click(object sender, RoutedEventArgs e)
     {

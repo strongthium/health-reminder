@@ -1,0 +1,35 @@
+<Window x:Class="Strongthium.HealthReminder.PrintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Print"
+        Width="1040" Height="780" MinWidth="720" MinHeight="480"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- What goes on the pages, on the left; the pages as they'll print, on the right. -->
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="300" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <DockPanel Margin="24,20,20,20">
+      <TextBlock x:Name="HeadingText" DockPanel.Dock="Top" Style="{StaticResource Title}" TextWrapping="Wrap" />
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <Button Content="Close" IsCancel="True" Padding="16,6" />
+        <Button x:Name="PrintButton" Click="Print_Click" IsDefault="True" Style="{DynamicResource AccentButtonStyle}" Padding="16,6" Margin="8,0,0,0">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE749;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+            <TextBlock Text="Print…" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Caption}" Margin="0,12,0,0"
+                 Text="To keep it as a file instead, pick Microsoft Print to PDF as the printer." />
+      <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+        <ContentControl x:Name="OptionsHost" Focusable="False" />
+      </ScrollViewer>
+    </DockPanel>
+    <Border Grid.Column="1" Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+      <FlowDocumentPageViewer x:Name="Viewer" Zoom="80" />
+    </Border>
+  </Grid>
+</Window>

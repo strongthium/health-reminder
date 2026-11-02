@@ -4,7 +4,7 @@
              xmlns:local="clr-namespace:Strongthium.HealthReminder">
   <!-- What to buy, and what it cost as it's bought. Amounts are typed in any unit and shown in one per kind. -->
   <Grid>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="36,28,36,28" MaxWidth="1000">
         <StackPanel Margin="0,0,0,16">
           <TextBlock Text="Groceries" Style="{StaticResource PageTitle}" />
@@ -47,7 +47,8 @@
               </Button>
               <StackPanel Margin="0,0,10,0">
                 <TextBlock Text="What" Style="{StaticResource Caption}" Margin="0,0,0,4" />
-                <ComboBox x:Name="NameBox" IsEditable="True" IsTextSearchEnabled="True" KeyDown="Add_KeyDown" />
+                <ComboBox x:Name="NameBox" IsEditable="True" IsTextSearchEnabled="True" KeyDown="Add_KeyDown" TextBoxBase.TextChanged="Name_Changed"
+                          ToolTip="As the package says it, if you like: Bick's Dill Relish 370 ml. The brand and the amount are read out of it." />
               </StackPanel>
               <StackPanel Grid.Column="1" Margin="0,0,10,0">
                 <TextBlock Text="How much (optional)" Style="{StaticResource Caption}" Margin="0,0,0,4" />
@@ -116,10 +117,22 @@
   
         <!-- To buy -->
         <StackPanel x:Name="ToBuyPanel">
-          <StackPanel Orientation="Horizontal" Margin="2,20,0,8">
-            <TextBlock Text="To buy" Style="{StaticResource Heading}" FontSize="15" />
-            <TextBlock x:Name="ToBuyCount" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
-          </StackPanel>
+          <Grid Margin="2,20,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+              <TextBlock Text="To buy" Style="{StaticResource Heading}" FontSize="15" />
+              <TextBlock x:Name="ToBuyCount" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+            </StackPanel>
+            <Button Grid.Column="1" Click="PrintList_Click" Padding="12,6" ToolTip="Print the list to take to the store, by section, with room to write what each cost">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE749;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                <TextBlock Text="Print" />
+              </StackPanel>
+            </Button>
+          </Grid>
           <ItemsControl x:Name="ToBuyList" Focusable="False">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="{x:Type local:GroceryRow}">
@@ -233,6 +246,44 @@
               <TextBlock x:Name="HistoryAllText" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
             </Button>
           </Grid>
+          <!-- Offered when the history looks to have things left over in it: looked at, ticked, and taken out. -->
+          <Border x:Name="TidyCard" Style="{StaticResource Card}" Padding="16,12" Margin="0,0,0,8" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock x:Name="TidyText" TextWrapping="Wrap" />
+              <StackPanel x:Name="TidyOffer" Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Have a look" Click="TidyLook_Click" Style="{DynamicResource AccentButtonStyle}" Padding="12,6" />
+                <Button Content="Not now" Click="TidyPass_Click" Padding="12,6" Margin="8,0,0,0" ToolTip="Leave it as it is: it's offered again only if there's more" />
+              </StackPanel>
+              <StackPanel x:Name="TidyPanel" Margin="0,10,0,0" Visibility="Collapsed">
+                <TextBlock Text="What's ticked comes out of this list. Untick anything you really did have." Style="{StaticResource Caption}" Margin="0,0,0,6" />
+                <ItemsControl x:Name="TidyList" Focusable="False">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type local:TidyRow}">
+                      <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox IsChecked="{Binding Out}" VerticalAlignment="Center" MinWidth="0" Margin="0,0,6,0" />
+                        <local:FoodView Grid.Column="1" Icon="{Binding Icon}" Tint="{Binding Tint}" Width="28" Height="28" />
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="{Binding NoteShown, Mode=OneWay}" FontStyle="Italic"
+                          /><Run Text="   " /><Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </TextBlock>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="TidySpelled" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Tidy it" Click="TidyApply_Click" Style="{DynamicResource AccentButtonStyle}" Padding="12,6"
+                          ToolTip="Nothing in your kitchen changes, and anything taken out comes back when it's bought again" />
+                  <Button Content="Never mind" Click="TidyPass_Click" Padding="12,6" Margin="8,0,0,0" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
           <Border x:Name="HistoryCard" Style="{StaticResource Card}" Padding="10,6,10,8">
             <ItemsControl x:Name="HistoryList" Focusable="False">
               <ItemsControl.ItemTemplate>
@@ -292,6 +343,10 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
               <TextBlock Text="Your kitchen" Style="{StaticResource Heading}" FontSize="15" />
               <TextBlock x:Name="KitchenSummary" Style="{StaticResource Muted}" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+              <Button x:Name="CheckFilter" Style="{StaticResource Bare}" Click="CheckFilter_Click" Padding="6,0" Margin="4,0,0,0" BorderThickness="0" VerticalAlignment="Bottom"
+                      Visibility="Collapsed">
+                <TextBlock x:Name="CheckFilterText" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+              </Button>
             </StackPanel>
             <StackPanel x:Name="KitchenTools" Grid.Column="1" Orientation="Horizontal">
               <ComboBox x:Name="SortBox" Width="170" Margin="0,0,8,0" SelectionChanged="Sort_Changed" ToolTip="The order things are in, in each group" />
@@ -301,10 +356,16 @@
                   <TextBlock x:Name="SelectButtonText" Text="Pick" />
                 </StackPanel>
               </Button>
-              <Button Click="Places_Click" Padding="12,6" ToolTip="Add, name and order the places things are kept: a second freezer, a pantry…">
+              <Button Click="Places_Click" Padding="12,6" Margin="0,0,8,0" ToolTip="Add, name and order the places things are kept: a second freezer, a pantry…">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="&#xE70F;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
                   <TextBlock Text="Places" />
+                </StackPanel>
+              </Button>
+              <Button Click="Print_Click" Padding="12,6" ToolTip="Print a list to take to the fridge and cupboards: what to check, or everything, from the places you pick">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE749;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+                  <TextBlock Text="Print" />
                 </StackPanel>
               </Button>
             </StackPanel>
@@ -612,7 +673,7 @@
                 <local:TimeBox x:Name="CheckAtBox" Margin="0,0,0,4" />
               </WrapPanel>
               <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,0"
-                         Text="In doubt: an amount read from a photo, used past what was counted, or not counted for two weeks. The check lists them, and counting them here puts them right. Click a picture to change it, a line to change its name, brand, packs, place or dates, and Pick (or drag) to move things together." />
+                         Text="In doubt: an amount read from a photo, used past what was counted, or not counted for two weeks. The check lists them, and counting them here puts them right: “to check”, beside Your kitchen, shows just those. Click a picture to change it, a line to change its name, brand, packs, place or dates, and Pick (or drag) to move things together." />
             </StackPanel>
           </Border>
         </StackPanel>

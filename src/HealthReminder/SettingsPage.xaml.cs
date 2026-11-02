@@ -89,6 +89,7 @@ public sealed partial class SettingsPage : UserControl, IPage
         TemperatureUnitBox.SelectedIndex = app.Fahrenheit ? 1 : 0;
         ShowCold();
         ShowClaude();
+        ShowTracking();
         loading = false;
 
         DataFolder.Text = "Your reminders, readings, photos and videos are kept on this computer only, in " + app.Database.Directory;
@@ -98,6 +99,53 @@ public sealed partial class SettingsPage : UserControl, IPage
         CameraBox.SelectedIndex = 0;
         CameraBox.IsEnabled = false;
         _ = FindCameras();
+    }
+
+    /// <summary>Whether it's tracking, and from when the stats count.</summary>
+    private void ShowTracking()
+    {
+        var tracking = App.Current.Schedule.Tracking;
+        TrackingTitle.Text = tracking.Stopped ? "Tracking is stopped" : "Tracking is on";
+        var counting = tracking.From is { } from ? $" The stats count from {from.ToString("MMM d", System.Globalization.CultureInfo.CurrentCulture)}." : "";
+        TrackingDetail.Text = (tracking.Stopped
+            ? "Nothing counts as missed until you start again."
+            : "What's due rings, and what isn't answered counts as missed.") + counting;
+        TrackingButton.Content = tracking.Stopped ? "Start tracking" : "Stop tracking…";
+        if (tracking.Stopped) TrackingButton.SetResourceReference(StyleProperty, "AccentButtonStyle");
+        else TrackingButton.ClearValue(StyleProperty);
+        UndoResetButton.Show(tracking.From is not null);
+    }
+
+    private void Tracking_Click(object sender, RoutedEventArgs e)
+    {
+        var app = App.Current;
+        if (app.Schedule.Tracking.Stopped) app.StartTracking();
+        else
+        {
+            var dialog = new StopTrackingWindow(app.Reminders.Any(r => r.Active && r.Kind.IsMedication())) { Owner = Window.GetWindow(this) };
+            if (dialog.ShowDialog() != true) return;
+            app.StopTracking(dialog.KeepMedication, dialog.Reset);
+        }
+        ShowTracking();
+    }
+
+    private void ResetStats_Click(object sender, RoutedEventArgs e)
+    {
+        var app = App.Current;
+        var sure = MessageBox.Show(Window.GetWindow(this),
+            "The stats and what's been missed start afresh from now.\n\n" + StopTrackingWindow.Stays,
+            "Reset stats", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
+        if (sure != MessageBoxResult.OK) return;
+        app.Schedule.Tracking.Reset(DateTime.Now);
+        app.Changed();
+        ShowTracking();
+    }
+
+    private void UndoReset_Click(object sender, RoutedEventArgs e)
+    {
+        App.Current.Schedule.Tracking.UndoReset();
+        App.Current.Changed();
+        ShowTracking();
     }
 
     private void Volume_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)

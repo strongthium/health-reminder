@@ -92,6 +92,18 @@ public sealed class StockedRow(StockedThing thing, List<PantryItem> have, Grocer
         : (System.Windows.Media.Brush)Application.Current.FindResource("TextFillColorSecondaryBrush");
 }
 
+/// <summary>Something that looks left over in the history, to take out or not.</summary>
+public sealed class TidyRow(StockedThing thing)
+{
+    public StockedThing Thing => thing;
+    public bool Out { get; set; } = true;
+    public string Icon => thing.Like.ShownIcon;
+    public string? Tint => thing.Like.ShownColor;
+    public string Name => thing.Name;
+    public string NoteShown => thing.Note.Length > 0 ? "  " + thing.Note : "";
+    public string Detail => $"first had {thing.First:MMM d}";
+}
+
 /// <summary>A food Claude saw in a photo, to keep or not, its name and amount fixable.</summary>
 public sealed class SeenRow(SeenFood food)
 {
@@ -140,7 +152,7 @@ public sealed class PantryRow : INotifyPropertyChanged
     public string Note => Item.Note is { Length: > 0 } note ? note : "";
     public string NoteShown => Note.Length > 0 ? "  " + Note : "";
     public string Shown => Pantry.Describe(Item, system);
-    public bool InDoubt => Item.Unsure || now - Item.Counted > Pantry.Recount && Item.Amount > 0;
+    public bool InDoubt => Pantry.IsInDoubt(Item, now);
     public string PictureTip => (InDoubt ? "In doubt: count it, or say the amount is right. " : "") + "Click to change its picture and colour";
 
     /// <summary>What was typed to count it; Set shows once there is some, and "Right" while there isn't.</summary>
@@ -304,7 +316,8 @@ public sealed class PlaceSection(KitchenPlace place, List<GroupSection> groups, 
         {
             var rows = groups.SelectMany(g => g.Rows).ToList();
             var doubt = rows.Count(r => r.InDoubt);
-            return $"{rows.Count} {(rows.Count == 1 ? "thing" : "things")}" + (doubt > 0 ? $" · {doubt} to check" : "");
+            return doubt > 0 && doubt == rows.Count ? $"{doubt} to check"
+                : $"{rows.Count} {(rows.Count == 1 ? "thing" : "things")}" + (doubt > 0 ? $" · {doubt} to check" : "");
         }
     }
 }
@@ -345,9 +358,10 @@ public sealed partial class GroceriesPage : UserControl, IPage
         {
             if (IsVisible) return;
             KeepOpen();
-            (openId, selecting) = (null, false);
+            (openId, selecting, checking) = (null, false, false);
             picked.Clear();
             SearchBox.Text = "";
+            CloseTidy();
         };
         searchWait.Tick += (_, _) =>
         {
@@ -385,6 +399,7 @@ public sealed partial class GroceriesPage : UserControl, IPage
             + (total > 0 ? " · " + total.ToString("C", CultureInfo.CurrentCulture) : "");
         SummaryText.Text = items.Count == 0 ? "What to buy, and what it cost"
             : $"{toBuyAll.Count} to buy" + (boughtAll.Count > 0 ? $" · {boughtAll.Count} in the cart" : "") + (total > 0 ? $" · {total.ToString("C", CultureInfo.CurrentCulture)} so far" : "");
+        (knownNames, knownBrands) = PantryLog.Known();
         var typed = NameBox.Text;
         NameBox.ItemsSource = App.Database.GroceryNames();
         NameBox.Text = typed;
@@ -484,6 +499,67 @@ public sealed partial class GroceriesPage : UserControl, IPage
         HistorySummary.Text = Searching ? $"{shown.Count} of {all.Count}"
             : runOut == 0 ? $"{all.Count} thing{(all.Count == 1 ? "" : "s")}, none run out"
             : $"{runOut} run out, of {all.Count}";
+        ShowTidy();
+    }
+
+    // Tidying: what's left over from renaming, offered when there's more of it than was last left as it is.
+
+    private bool tidyOpen;
+    private List<TidyRow> tidyRows = [];
+    private List<(string Name, string Spelled)> tidySpellings = [];
+
+    private void ShowTidy()
+    {
+        if (tidyOpen) return;
+        var tidy = PantryLog.Tidy();
+        TidyCard.Show(!Searching && tidy.Count > PantryLog.TidyPassed);
+        var (left, spelled) = (tidy.Leftovers.Count, tidy.Spellings.Count);
+        TidyText.Text = (left > 0
+                ? $"{left} of these look{(left == 1 ? "s" : "")} left over: never bought, not in your kitchen and never logged as eaten, most likely an old name from before something was renamed. "
+                : "")
+            + (spelled > 0 ? $"{spelled} name{(spelled == 1 ? " is" : "s are")} spelled two ways here. " : "")
+            + "Tidy the list?";
+    }
+
+    private void TidyLook_Click(object sender, RoutedEventArgs e)
+    {
+        var tidy = PantryLog.Tidy();
+        tidyRows = tidy.Leftovers.Select(t => new TidyRow(t)).ToList();
+        tidySpellings = tidy.Spellings.ToList();
+        tidyOpen = true;
+        TidyList.ItemsSource = tidyRows;
+        TidySpelled.Text = tidySpellings.Count == 0 ? ""
+            : "And spelled the way they are now: " + string.Join(", ", tidySpellings.Select(s => $"{s.Name} → {s.Spelled}")) + ".";
+        TidySpelled.Show(tidySpellings.Count > 0);
+        TidyOffer.Show(false);
+        TidyPanel.Show(true);
+    }
+
+    private void TidyApply_Click(object sender, RoutedEventArgs e)
+    {
+        PantryLog.Tidied(tidyRows.Where(r => r.Out).Select(r => r.Thing), tidySpellings);
+        PantryLog.TidyPassed = tidyRows.Count(r => !r.Out);
+        CloseTidy();
+        KeepOpen();
+        Redraw();
+    }
+
+    /// <summary>Left as it is: it's offered again only if there's more.</summary>
+    private void TidyPass_Click(object sender, RoutedEventArgs e)
+    {
+        PantryLog.TidyPassed = PantryLog.Tidy().Count;
+        CloseTidy();
+        KeepOpen();
+        Redraw();
+    }
+
+    private void CloseTidy()
+    {
+        tidyOpen = false;
+        (tidyRows, tidySpellings) = ([], []);
+        TidyList.ItemsSource = null;
+        TidyPanel.Show(false);
+        TidyOffer.Show(true);
     }
 
     private void HistoryAll_Click(object sender, RoutedEventArgs e)
@@ -590,6 +666,8 @@ public sealed partial class GroceriesPage : UserControl, IPage
     private long? openId;
     private bool selecting;
     private readonly HashSet<long> picked = [];
+    /// <summary>Just what needs checking is shown.</summary>
+    private bool checking;
     private List<PantryRow> rows = [];
     private List<KitchenPlace> places = [];
 
@@ -610,9 +688,12 @@ public sealed partial class GroceriesPage : UserControl, IPage
             row.PropertyChanged += Row_PropertyChanged;
         }
         var placeOf = rows.ToDictionary(r => r, r => Pantry.PlaceOf(r.Item, places).Id);
-        // Searching, only what matches is shown, in every place it's in, closed or not.
-        var shown = rows.Where(r => Matches(r.Name, r.Note, r.Item.ShownGroup, r.Item.ShownIcon)).ToList();
-        var closed = Searching ? new HashSet<long>() : ClosedPlaces();
+        var doubt = rows.Count(r => r.InDoubt);
+        // All counted: there's nothing more to show just that of.
+        if (doubt == 0) checking = false;
+        // Searching or checking, only what matches is shown, in every place it's in, closed or not.
+        var shown = rows.Where(r => Matches(r.Name, r.Note, r.Item.ShownGroup, r.Item.ShownIcon) && (!checking || r.InDoubt)).ToList();
+        var closed = Searching || checking ? new HashSet<long>() : ClosedPlaces();
         KitchenList.ItemsSource = places
             .Select(place => new PlaceSection(place,
                 shown.Where(r => placeOf[r] == place.Id)
@@ -634,12 +715,48 @@ public sealed partial class GroceriesPage : UserControl, IPage
         SortBox.SelectedIndex = (int)sort;
         sorting = false;
         NoKitchen.Show(rows.Count == 0);
-        var doubt = rows.Count(r => r.InDoubt);
         KitchenSummary.Text = rows.Count == 0 ? ""
             : Searching ? $"{shown.Count} of {rows.Count} things"
-            : $"{rows.Count} things" + (doubt > 0 ? $" · {doubt} to check" : "");
+            : checking ? $"{doubt} to check, of {rows.Count}"
+            : $"{rows.Count} things";
+        CheckFilter.Show(doubt > 0);
+        CheckFilterText.Text = checking ? "Show everything" : $"{doubt} to check";
+        CheckFilter.ToolTip = checking ? null : "Show just what needs counting: click it again for everything";
         SelectButtonText.Text = selecting ? "Done picking" : "Pick";
         ShowPicked();
+    }
+
+    private void CheckFilter_Click(object sender, RoutedEventArgs e)
+    {
+        KeepOpen();
+        checking = !checking;
+        Redraw();
+    }
+
+    /// <summary>The grocery list, to take to the store.</summary>
+    private void PrintList_Click(object sender, RoutedEventArgs e) => Printing.Groceries(Window.GetWindow(this));
+
+    /// <summary>A list to print: what's to check while that's shown, or there's some, and otherwise everything.</summary>
+    private void Print_Click(object sender, RoutedEventArgs e)
+    {
+        KeepOpen();
+        Printing.Kitchen(Window.GetWindow(this), toCheck: checking || rows.Any(r => r.InDoubt));
+        Redraw();
+    }
+
+    /// <summary>The week's check: just what needs counting, with the kitchen at the top of the page.</summary>
+    public void ShowToCheck()
+    {
+        KeepOpen();
+        (openId, selecting, checking) = (null, false, true);
+        picked.Clear();
+        SearchBox.Text = "";
+        Redraw();
+        Dispatcher.BeginInvoke(() =>
+        {
+            Scroller.UpdateLayout();
+            Scroller.ScrollToVerticalOffset(Scroller.VerticalOffset + KitchenHeader.TranslatePoint(default, Scroller).Y);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     /// <summary>In a narrow window, the sort and the buttons go under the heading.</summary>
@@ -1087,17 +1204,32 @@ public sealed partial class GroceriesPage : UserControl, IPage
     /// <summary>Straight into the kitchen's stock, not on the list.</summary>
     private void HaveIt_Click(object sender, RoutedEventArgs e)
     {
-        var name = (NameBox.Text ?? "").Trim();
-        if (name.Length == 0)
-        {
-            NameBox.Focus();
-            return;
-        }
-        if (PutAway(name, QuantityBox.Text.Trim()) is not { } place) return;
+        if (Entry() is not { } entry) return;
+        if (PutAway(entry.Name, entry.Quantity, entry.Note) is not { } place) return;
         NameBox.Text = "";
         QuantityBox.Text = "";
         Redraw();
-        if (place.Length > 0) QuantityHint.Text = $"Added {name} to {place}.";
+        if (place.Length > 0) QuantityHint.Text = $"Added {entry.Name} to {place}.";
+    }
+
+    private List<string> knownNames = [];
+    private List<string> knownBrands = [];
+
+    private GroceryEntry ReadEntry() => GroceryEntry.Read(NameBox.Text ?? "", QuantityBox.Text, knownNames, knownBrands);
+
+    /// <summary>What's typed under What and How much, read, and asked about if it could be read more than one way.
+    /// Null when there's nothing typed, or it's cancelled.</summary>
+    private GroceryEntry? Entry()
+    {
+        if ((NameBox.Text ?? "").Trim().Length == 0)
+        {
+            NameBox.Focus();
+            return null;
+        }
+        var entry = ReadEntry();
+        if (entry.Sure) return entry;
+        var dialog = new EntryWindow(NameBox.Text ?? "", QuantityBox.Text, entry) { Owner = Window.GetWindow(this) };
+        return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
     /// <summary>
@@ -1167,13 +1299,8 @@ public sealed partial class GroceriesPage : UserControl, IPage
 
     private void Add()
     {
-        var name = (NameBox.Text ?? "").Trim();
-        if (name.Length == 0)
-        {
-            NameBox.Focus();
-            return;
-        }
-        App.Database.Save(new GroceryItem { Name = name, Quantity = QuantityBox.Text.Trim(), Added = DateTime.Now });
+        if (Entry() is not { } entry) return;
+        App.Database.Save(new GroceryItem { Name = entry.Name, Note = entry.Note, Quantity = entry.Quantity, Added = DateTime.Now });
         NameBox.Text = "";
         QuantityBox.Text = "";
         Redraw();
@@ -1182,9 +1309,23 @@ public sealed partial class GroceriesPage : UserControl, IPage
 
     private void Quantity_Changed(object sender, TextChangedEventArgs e) => ShowQuantityHint();
 
+    private void Name_Changed(object sender, TextChangedEventArgs e) => ShowQuantityHint();
+
     private void ShowQuantityHint()
     {
         var text = QuantityBox.Text.Trim();
+        // A whole line typed under What: how it'll be read, before it's added.
+        var entry = ReadEntry();
+        if (entry.Name != (NameBox.Text ?? "").Trim() && entry.Name.Length > 0)
+        {
+            QuantityHint.Text = "Reads as: " + string.Join(", ", new[]
+            {
+                entry.Name,
+                entry.Note ?? "",
+                Quantities.Parse(entry.Quantity) is { Dimension: not Dimension.Count } measure ? Quantities.Format(measure, App.Measures) : entry.Quantity,
+            }.Where(p => p.Length > 0)) + (entry.Sure ? "." : ". You'll be asked, to be sure.");
+            return;
+        }
         QuantityHint.Text = text.Length == 0 ? "Any amount: 2 L, 1 gallon, 500 g, 2 lb, 12, a dozen."
             : Quantities.Parse(text) is { } amount ? "That's " + Quantities.Format(amount, App.Measures) + (amount.Dimension == Dimension.Count ? "" : $" ({(amount.Dimension == Dimension.Volume ? "liquid" : "weight")})") + "."
             : "Kept as typed: it isn't an amount the list can compare.";

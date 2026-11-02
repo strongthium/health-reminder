@@ -122,11 +122,17 @@ public sealed partial class TodayPage : UserControl, IPage
         Count(DoseState.Skipped, "skipped");
         Count(DoseState.Upcoming, "to come");
         CountsText.Text = string.Join(" · ", counts);
-        var next = Schedule.Next(reminders, now);
+        var next = app.Schedule.NextRinging(reminders, now);
         NextText.Text = next is null ? "Nothing more is scheduled" : $"Next: {next.Reminder.Name} at {Format.When(next.Due, now)}";
 
+        var tracking = app.Schedule.Tracking;
+        TrackingCard.Show(tracking.Stopped);
+        TrackingText.Text = "Nothing counts as missed until you start again. "
+            + (tracking.KeepMedication && reminders.Any(r => r.Active && r.Kind.IsMedication()) ? "Only medication rings." : "Nothing rings.");
+        NothingToday.Show(reminders.Count > 0 && day.Count == 0 && !tracking.Stopped);
+
         var today = DateOnly.FromDateTime(now);
-        var workout = ExerciseLog.Today(today);
+        var workout = tracking.Stopped ? null : ExerciseLog.Today(today);
         var doneExercise = app.Database.ExerciseLog(today).FirstOrDefault();
         ExerciseCard.Show(workout is not null || doneExercise is not null);
         if (doneExercise is not null)
@@ -142,13 +148,13 @@ public sealed partial class TodayPage : UserControl, IPage
             ExerciseButton.Show(true);
         }
 
-        var kitchen = KitchenLog.AlertsOn ? KitchenLog.Events(now.Date, now.Date.AddDays(1).AddTicks(-1)) : [];
+        var kitchen = KitchenLog.AlertsOn && !tracking.Stopped ? KitchenLog.Events(now.Date, now.Date.AddDays(1).AddTicks(-1)) : [];
         KitchenList.ItemsSource = kitchen.Select(e => new KitchenRow(e, KitchenLog.IsDone(e), now)).ToList();
         KitchenCard.Show(kitchen.Count > 0);
 
         // The day so far, against the week before it.
         var days = FoodLog.Days(today.AddDays(-9), now);
-        var notes = DailyStats.Notes(days, app.Database.Smokes(now.Date.AddDays(-9)), now, SmokeLog.TargetToday());
+        var notes = DailyStats.Notes(days, app.Database.Smokes(tracking.Counted(now.Date.AddDays(-9))), now, SmokeLog.TargetToday());
         NoteList.ItemsSource = notes.Take(3).Select(n => new NoteRow(n)).ToList();
         NoteCard.Show(notes.Count > 0);
 
@@ -163,6 +169,8 @@ public sealed partial class TodayPage : UserControl, IPage
     }
 
     private void Stats_Click(object sender, RoutedEventArgs e) => this.MainWindowOf().Navigate(MainWindow.StatsPage);
+
+    private void StartTracking_Click(object sender, RoutedEventArgs e) => App.Current.StartTracking();
 
     private void LogFood_Click(object sender, RoutedEventArgs e)
     {

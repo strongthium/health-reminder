@@ -121,6 +121,120 @@ public sealed class PantryPackingTests
     }
 
     [Fact]
+    public void RenamingTakesWhatsKeptWithIt()
+    {
+        using var database = new Database();
+        var pickles = database.Save(Item("dill pickles"));
+        database.Bought(pickles, "1 L", Monday);
+        database.Save(new GroceryItem { Name = "dill pickles", Quantity = "1 L", Price = 3.49m, Bought = Monday, Added = Monday });
+
+        // A brand given: the same thing, not another one beside it.
+        pickles = database.Save(pickles with { Note = "Bick's" });
+        var kept = Assert.Single(database.Stocked());
+        Assert.Equal(("dill pickles", "Bick's", 1, "1 L"), (kept.Name, kept.Note, kept.Bought, kept.Quantity));
+
+        // Spelled another way: that's how it's kept, and how the list has it.
+        pickles = database.Save(pickles with { Name = "Dill Pickles" });
+        Assert.Equal("Dill Pickles", Assert.Single(database.Stocked()).Name);
+        Assert.Equal("Dill Pickles", database.BoughtSince(Monday).Single().Name);
+
+        // Another name: what was bought and paid goes with it.
+        database.Save(pickles with { Name = "Kosher spears" });
+        kept = Assert.Single(database.Stocked());
+        Assert.Equal(("Kosher spears", 1), (kept.Name, kept.Bought));
+        Assert.Equal(3.49m, database.LastBought("kosher spears")!.Price);
+        Assert.Null(database.LastBought("dill pickles"));
+    }
+
+    [Fact]
+    public void RenamingOnToSomethingThereWasAddsThemUp()
+    {
+        using var database = new Database();
+        var old = database.Save(Item("Tuna") with { Note = "Clover" });
+        database.Bought(old, "2", Monday);
+        var other = database.Save(Item("Canned tuna") with { Note = "Clover" });
+        database.Bought(other, "4", Monday.AddDays(5));
+
+        database.Save(old with { Name = "Canned tuna" });
+        var kept = Assert.Single(database.Stocked());
+        Assert.Equal(("Canned tuna", 2, "4", Monday.AddDays(5)), (kept.Name, kept.Bought, kept.Quantity, kept.Last));
+    }
+
+    [Fact]
+    public void ASecondBagKeepsTheOldName()
+    {
+        using var database = new Database();
+        var one = database.Save(Item("Rice", 900, "g"));
+        database.Bought(one, "900 g", Monday);
+        database.Save(new GroceryItem { Name = "Rice", Price = 5m, Bought = Monday, Added = Monday });
+        var two = database.Save(Item("Rice", 500, "g"));
+
+        database.Save(two with { Name = "Basmati" });
+        Assert.Equal(["Basmati", "Rice"], database.Stocked().Select(t => t.Name));
+        Assert.Equal(1, database.Stocked().Single(t => t.Name == "Rice").Bought);
+        Assert.Equal(5m, database.LastBought("Rice")!.Price);
+    }
+
+    [Fact]
+    public void SomethingNewIsSpelledTheWayItsBeen()
+    {
+        using var database = new Database();
+        database.Save(Item("Dill Pickles"));
+        Assert.Equal("Dill Pickles", database.Save(Item("dill pickles")).Name);
+        Assert.Equal("Dill Pickles", Assert.Single(database.Stocked()).Name);
+    }
+
+    [Fact]
+    public void TidyingFindsWhatRenamingLeftBehind()
+    {
+        using var database = new Database();
+        // What renaming used to leave behind, and what's really been had: the old build's rows, kept by hand here.
+        var bought = database.Save(Item("Rice"));
+        database.Bought(bought, "1 kg", Monday);
+        database.DeletePantry(bought);
+        database.DeletePantry(database.Save(Item("old name")));
+        var eaten = database.Save(Item("Soup"));
+        database.DeletePantry(eaten);
+        database.DeletePantry(database.Save(Item("Juice boxes")));
+        database.DeletePantry(database.Save(Item("Juice boxes") with { Note = "Rougemont" }));
+        database.Save(Item("In the kitchen"));
+
+        var tidy = Pantry.Tidy(database.Stocked(), database.Pantry(), ["soup"]);
+        Assert.Equal([("Juice boxes", ""), ("Juice boxes", "Rougemont"), ("old name", "")], tidy.Leftovers.Select(t => (t.Name, t.Note)).OrderBy(t => t.Name).ThenBy(t => t.Note));
+        Assert.Empty(tidy.Spellings);
+
+        // What's eaten keeps its brand; the one without a brand is still the leftover of it.
+        tidy = Pantry.Tidy(database.Stocked(), database.Pantry(), ["Juice boxes"]);
+        Assert.Contains(tidy.Leftovers, t => (t.Name, t.Note) == ("Juice boxes", ""));
+        Assert.DoesNotContain(tidy.Leftovers, t => t.Note == "Rougemont");
+
+        // Taken out, and the rest are as they were.
+        foreach (var thing in tidy.Leftovers) database.Forget(thing);
+        Assert.Equal(["In the kitchen", "Juice boxes", "Rice"], database.Stocked().Select(t => t.Name));
+    }
+
+    [Fact]
+    public void TidyingSpellsANameTheWayTheKitchenHasIt()
+    {
+        static StockedThing Had(string name, string note = "") =>
+            new(Item(name) with { Note = note.Length > 0 ? note : null }, "", 2, Monday, Monday);
+        var history = new[] { Had("dill pickles", "Bick's"), Had("Dill Pickles", "Putter's"), Had("salsa", "Old El Paso"), Had("SALSA") };
+
+        var tidy = Pantry.Tidy(history, [], []);
+        Assert.Empty(tidy.Leftovers);
+        Assert.Equal([("dill pickles", "Dill Pickles"), ("salsa", "SALSA")], tidy.Spellings);
+
+        Assert.Equal([("dill pickles", "Dill pickles"), ("Dill Pickles", "Dill pickles"), ("salsa", "SALSA")], Pantry.Tidy(history, [Item("Dill pickles")], []).Spellings);
+
+        using var database = new Database();
+        database.Bought(database.Save(Item("dill pickles")), "1", Monday);
+        database.Save(new GroceryItem { Name = "dill pickles", Added = Monday });
+        database.Respell("dill pickles", "Dill Pickles");
+        Assert.Equal("Dill Pickles", database.StockedNamed("dill pickles").Single().Name);
+        Assert.Equal("Dill Pickles", database.Groceries().Single().Name);
+    }
+
+    [Fact]
     public void TheListKeepsTheBrandToBuy()
     {
         using var database = new Database();

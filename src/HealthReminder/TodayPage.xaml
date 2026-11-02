@@ -22,6 +22,21 @@
         </Button>
       </Grid>
 
+      <!-- Tracking stopped: said plainly, so that the quiet isn't a surprise. -->
+      <Border x:Name="TrackingCard" Style="{StaticResource Card}" Padding="20,12" Margin="0,0,0,16" Visibility="Collapsed">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Tracking is stopped" FontSize="15" FontWeight="SemiBold" />
+            <TextBlock x:Name="TrackingText" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,2,0,0" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="Start tracking" Click="StartTracking_Click" Style="{DynamicResource AccentButtonStyle}" Padding="14,6" Margin="16,0,0,0" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+
       <!-- How the day is going. -->
       <Border x:Name="Summary" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,16">
         <Grid>

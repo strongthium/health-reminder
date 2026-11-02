@@ -14,7 +14,7 @@ public sealed class NoticeWindow : Window
     {
         Title = title;
         Icon = App.Icon;
-        Width = 520;
+        Width = buttons.Length > 3 ? 600 : 520;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;

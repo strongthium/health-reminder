@@ -37,8 +37,17 @@
         <StackPanel>
           <TextBlock Text="Stats" Style="{StaticResource PageTitle}" />
           <TextBlock Text="How the days have gone: reminders done and missed, cigarettes, drinks and food" Style="{StaticResource Muted}" FontSize="14" Margin="0,2,0,0" TextWrapping="Wrap" />
+          <TextBlock x:Name="CountingText" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
         </StackPanel>
-        <ComboBox x:Name="RangeBox" Grid.Column="1" VerticalAlignment="Center" MinWidth="150" SelectionChanged="Range_Changed" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <ComboBox x:Name="RangeBox" MinWidth="150" SelectionChanged="Range_Changed" />
+          <Button Click="Print_Click" Padding="12,6" Margin="8,0,0,0" ToolTip="Print these stats and charts, or save them as a PDF">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="&#xE749;" Style="{StaticResource Icon}" FontSize="13" Margin="0,0,8,0" />
+              <TextBlock Text="Print" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
       </Grid>
 
       <!-- What stands out -->
@@ -109,11 +118,11 @@
         <StackPanel>
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsPage.DoneBrush}" />
+              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsReport.DoneBrush}" />
               <TextBlock Text="Done" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,12,0" />
-              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsPage.SkippedBrush}" />
+              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsReport.SkippedBrush}" />
               <TextBlock Text="Skipped" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,12,0" />
-              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsPage.MissedBrush}" />
+              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsReport.MissedBrush}" />
               <TextBlock Text="Missed" Style="{StaticResource Muted}" FontSize="12" />
             </StackPanel>
             <TextBlock Text="Reminders each day" Style="{StaticResource ChartTitle}" />
@@ -143,9 +152,9 @@
         <StackPanel>
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsPage.DrinkBrush}" />
+              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsReport.DrinkBrush}" />
               <TextBlock Text="Done" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,12,0" />
-              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsPage.DrinkLeftBrush}" />
+              <Border Style="{StaticResource Swatch}" Background="{x:Static local:StatsReport.DrinkLeftBrush}" />
               <TextBlock Text="Not done" Style="{StaticResource Muted}" FontSize="12" />
             </StackPanel>
             <TextBlock Text="Drinks each day" Style="{StaticResource ChartTitle}" />

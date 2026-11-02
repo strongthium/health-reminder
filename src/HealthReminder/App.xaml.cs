@@ -280,9 +280,12 @@ public sealed partial class App : Application
     {
         var now = DateTime.Now;
         CheckDue(now);
-        CheckKitchen(now);
-        CheckExercise(now);
-        CheckPantry(now);
+        if (!Schedule.Tracking.Stopped)
+        {
+            CheckKitchen(now);
+            CheckExercise(now);
+            CheckPantry(now);
+        }
         var minute = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMinute));
         if (minute != lastMinute)
         {
@@ -358,19 +361,22 @@ public sealed partial class App : Application
             $"{check.Items.Count} thing{(check.Items.Count == 1 ? "" : "s")} to count, about {minutes} minutes: "
             + string.Join(", ", check.Items.Take(8).Select(i => i.Name)) + (check.Items.Count > 8 ? ", and more" : "")
             + ". Counting them keeps the stock, the meal ideas and the shopping right.",
-            KindLook.Brush(ReminderKind.Meal), "Count them now", "In 2 hours", "Not this week");
+            KindLook.Brush(ReminderKind.Meal), "Count them now", "Print a list", "In 2 hours", "Not this week");
         checkNotice.Closed += (_, _) =>
         {
             switch (checkNotice.Answer)
             {
-                case 0:
+                case 0 or 1:
                     PantryLog.CheckDone(check);
                     ShowPage(Strongthium.HealthReminder.MainWindow.GroceriesPage);
-                    break;
-                case 1:
-                    checkSnoozed[check.Key] = DateTime.Now.AddHours(2);
+                    (mainWindow?.Page.Content as GroceriesPage)?.ShowToCheck();
+                    // On paper, to take round the kitchen, and type in after.
+                    if (checkNotice.Answer == 1) Printing.Kitchen(mainWindow, toCheck: true);
                     break;
                 case 2:
+                    checkSnoozed[check.Key] = DateTime.Now.AddHours(2);
+                    break;
+                case 3:
                     PantryLog.CheckDone(check);
                     break;
             }
@@ -432,11 +438,25 @@ public sealed partial class App : Application
         UpdateTrayText(DateTime.Now);
     }
 
+    /// <summary>Tracking stopped: nothing counts as missed, and what no longer rings comes off the alarm.</summary>
+    public void StopTracking(bool keepMedication, bool reset)
+    {
+        Schedule.StopTracking(Reminders, DateTime.Now, keepMedication, reset);
+        Changed();
+    }
+
+    public void StartTracking()
+    {
+        Schedule.Tracking.Start(DateTime.Now);
+        Changed();
+    }
+
     private void UpdateTrayText(DateTime now)
     {
         if (trayIcon is null) return;
-        var next = Schedule.Next(Reminders, now);
-        var text = next is null ? "Health Reminder" : $"Health Reminder: next, {next.Reminder.Name} at {Format.When(next.Due, now)}";
+        var next = Schedule.NextRinging(Reminders, now);
+        var stopped = Schedule.Tracking.Stopped ? " (tracking stopped)" : "";
+        var text = next is null ? "Health Reminder" + stopped : $"Health Reminder{stopped}: next, {next.Reminder.Name} at {Format.When(next.Due, now)}";
         trayIcon.Text = text.Length > 127 ? text[..127] : text;
     }
 
