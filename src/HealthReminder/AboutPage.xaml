@@ -73,7 +73,7 @@
       <Border Style="{StaticResource Card}" Margin="0,0,0,12">
         <StackPanel>
           <TextBlock Text="More from Strongthium" Style="{StaticResource Heading}" Margin="0,0,0,2" />
-          <TextBlock Text="Software for running your own servers and talking to your customers. Every one has a free edition, with no time limit." Style="{StaticResource Caption}" Margin="0,0,0,10" />
+          <TextBlock Text="Software for running your own servers and Windows PCs, and for talking to your customers. Every one has a free edition, with no time limit." Style="{StaticResource Caption}" Margin="0,0,0,10" />
           <UniformGrid Columns="2">
             <StackPanel Margin="0,0,16,10">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/linux-server-firewall" RequestNavigate="Link_RequestNavigate">Strongthium Guard</Hyperlink></TextBlock>
@@ -83,13 +83,25 @@
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/self-hosted-mail-server" RequestNavigate="Link_RequestNavigate">Strongthium Mail</Hyperlink></TextBlock>
               <TextBlock Style="{StaticResource Caption}" Text="A mail server of your own, for Linux and Windows, that tells you exactly why it refused what it refused." />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
+            <StackPanel Margin="0,0,16,10">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/self-hosted-live-chat" RequestNavigate="Link_RequestNavigate">Strongthium Chat</Hyperlink></TextBlock>
               <TextBlock Style="{StaticResource Caption}" Text="Live chat you host yourself: your websites and text messages in one inbox, answered from Windows or a browser." />
             </StackPanel>
-            <StackPanel>
+            <StackPanel Margin="0,0,0,10">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/windows-ssh-client" RequestNavigate="Link_RequestNavigate">Strongthium Remote</Hyperlink></TextBlock>
               <TextBlock Style="{StaticResource Caption}" Text="An SSH client for Windows: terminal, file manager, editor, task manager, database client and remote desktop, in tabs." />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/twilio-sms-desktop-app" RequestNavigate="Link_RequestNavigate">Strongthium SMS</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="Your own Twilio account's texts on Windows, with senders blocked by number or by country." />
+            </StackPanel>
+            <StackPanel Margin="0,0,0,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/windows-registry-editor" RequestNavigate="Link_RequestNavigate">Strongthium Registry</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="A registry editor that says what each key and value means, and backs up every change before it's made." />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/video-conferencing-dial-up-modem" RequestNavigate="Link_RequestNavigate">Strongthium Convey</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="Video conferences between Windows PCs, over the Internet, a dial-up modem or a cable." />
             </StackPanel>
           </UniformGrid>
         </StackPanel>

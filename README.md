@@ -704,7 +704,7 @@ dotnet run --project src/HealthReminder
 
 ## More from Strongthium
 
-Strongthium Labs also makes software for running your own servers and talking to your customers, at [strongthium.com](https://strongthium.com):
+Strongthium Labs also makes software for running your own servers and Windows PCs, and for talking to your customers, at [strongthium.com](https://strongthium.com):
 
 <table>
   <tr>
@@ -738,6 +738,33 @@ Strongthium Labs also makes software for running your own servers and talking to
       <a href="https://strongthium.com/windows-ssh-client"><b>Strongthium Remote</b></a><br>
       <sub><b>Windows SSH client.</b> SSH terminal, file manager, editor, server task manager, database client and remote desktop in tabs, in one program.</sub>
     </td>
+  </tr>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://strongthium.com/twilio-sms-desktop-app"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/sms.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/sms.svg" width="48" height="48" alt="Strongthium SMS icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://strongthium.com/twilio-sms-desktop-app"><b>Strongthium SMS</b></a><br>
+      <sub><b>Twilio text messages for Windows.</b> Sends and receives your own Twilio account's texts from Windows, and blocks senders by number or by country.</sub>
+    </td>
+    <td width="64" align="center" valign="top">
+      <a href="https://strongthium.com/windows-registry-editor"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/registry.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/registry.svg" width="48" height="48" alt="Strongthium Registry icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://strongthium.com/windows-registry-editor"><b>Strongthium Registry</b></a><br>
+      <sub><b>Windows registry editor.</b> Shows what each key and value means, finds any key in seconds, and backs up every change before it's made.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://strongthium.com/video-conferencing-dial-up-modem"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/convey.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/convey.svg" width="48" height="48" alt="Strongthium Convey icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://strongthium.com/video-conferencing-dial-up-modem"><b>Strongthium Convey</b></a><br>
+      <sub><b>Video conferencing for Windows.</b> Video, sound and text chat between Windows PCs, over the Internet, a dial-up modem or a cable.</sub>
+    </td>
+    <td></td>
+    <td></td>
   </tr>
 </table>
 
