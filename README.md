@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 `health-reminder` is a Windows program that rings, and keeps on until you answer, when it's time to take a
-medication, give an injection, test your blood sugar, eat or drink, and tells you how much. For a pill it shows what
+medication, give an injection, change an IV bag, test your blood sugar, eat or drink, and tells you how much. For a pill it shows what
 the pill looks like (its colour, shape, size, score line and imprint, from the description its manufacturer filed with
 the FDA or, for a Canadian product, its Health Canada product monograph) and a photo of that very pill when one
 exists, so you can check you're taking the right one. It can record a time-stamped video of each dose being taken, as
@@ -201,7 +201,7 @@ Closing the window asks whether to keep running in the tray.
 
 | | |
 |---|---|
-| **Medication** | pills, injections (insulin and other pens and syringes), liquids, inhalers, drops, patches and creams, each counted in its own unit: 2 tablets, ½ tablet, 14 units, 5 mL, 2 puffs |
+| **Medication** | pills, injections (insulin and other pens and syringes), IV drips, liquids, inhalers, drops, patches and creams, each counted in its own unit: 2 tablets, ½ tablet, 14 units, 5 mL, 2 puffs, a bag |
 | **Checks** | blood sugar tests, blood pressure, weight, or anything else; the reminder asks for the reading and keeps it |
 | **Eating and drinking** | meals, snacks and water, planned for you from your height, weight and sex, to keep, lose or gain weight, with an everyday idea for each meal; or set by hand |
 
@@ -217,6 +217,13 @@ in one window, and **Done with all** answers them at once.
 
 For an injection it suggests the next site in your rotation (abdomen left, abdomen right, thigh...) and keeps the one
 you used. For a check, the reading you type in is kept with the time, and the **History** tab lists them.
+
+An **IV drip** rings for its bags rather than at times of day. Say what the line is and where it goes in (a PICC line in
+the left arm, a port, an IV in the hand) and when it was put in, the bag's size and the pump's rate (or just how long a
+bag lasts), and when this bag was started. It rings a while before the bag runs out, 15 minutes unless you say
+otherwise, and shows the line and when the bag runs out. **Bag changed** starts the next bag from then, so a bag
+changed late or early moves the ones after it, and the History keeps the line each bag went in by. Count the bags on
+hand, and it says when it's time to get more.
 
 ## Using it
 
@@ -318,7 +325,8 @@ so `health-reminder` looks in turn:
    a photo and the same imprint, shape and colour: the same pill from the same maker. Up to 60 labels are read.
 
 The photo it found, and the label it came from, are shown before you save. If none is found, the drawing is used, and
-you can choose one of the label's other pictures by hand.
+you can choose one of the label's other pictures by hand. **Don't use a picture**, under the picture, leaves just the
+drawing.
 
 For a strength or a maker its own label doesn't have, the same drug and strength from every other maker on DailyMed is
 listed too, each pill drawn as its label describes it, to pick the one that looks like yours.

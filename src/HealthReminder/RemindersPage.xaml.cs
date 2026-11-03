@@ -40,6 +40,8 @@ public sealed class ReminderItem(Reminder reminder, string imageDirectory, Suppl
         get
         {
             if (!Reminder.Active) return "Paused: it doesn't ring";
+            if (Kind == ReminderKind.IV)
+                return $"A bag every {Format.Hours(Reminder.Iv.Hours)}" + (Format.Drip(Reminder.Iv, DateTime.Now) is { Length: > 0 } drip ? " · " + drip : "");
             if (Reminder.Times.Count == 0) return "No times set";
             var amounts = Kind.HasAmount() && Reminder.Unit.Length > 0;
             // Many times with the same amount (a day of drinks) are summed up rather than listed.

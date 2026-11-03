@@ -93,6 +93,11 @@
                       <TextBlock Text="{Binding Look}" FontSize="15" TextWrapping="Wrap" Margin="0,2,0,0" />
                     </StackPanel>
 
+                    <StackPanel Margin="0,12,0,0" Visibility="{Binding Drip, Converter={StaticResource VisibleIfText}}">
+                      <TextBlock Text="THE LINE AND THE BAG" Style="{StaticResource Caption}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Drip}" FontSize="15" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+
                     <StackPanel Margin="0,12,0,0" Visibility="{Binding Idea, Converter={StaticResource VisibleIfText}}">
                       <TextBlock Text="{Binding IdeaLabel}" Style="{StaticResource Caption}" FontWeight="SemiBold" />
                       <DockPanel Margin="0,2,0,0">

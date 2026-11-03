@@ -554,6 +554,29 @@ public static class Format
 
     public static string Time(DateTime time) => time.ToString("t", CultureInfo.CurrentCulture);
 
+    /// <summary>"12 h", "8 h 20 min", "45 min".</summary>
+    public static string Hours(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        return minutes < 60 ? $"{minutes} min" : minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes / 60} h {minutes % 60} min";
+    }
+
+    /// <summary>An IV drip's line and its bag: "PICC line, left arm, in since Oct 24 · this bag runs out at 8:00 PM".</summary>
+    public static string Drip(IvDrip iv, DateTime now)
+    {
+        var line = iv.Where + (iv.LineSince is { } since ? (iv.Where.Length > 0 ? ", in" : "in") + " since " + since.ToString("MMM d", CultureInfo.CurrentCulture) : "");
+        var bag = iv.Current is { } current && iv.RunsOut(current.Started) is var empty
+            ? (empty > now ? "this bag runs out " : "this bag ran out ") + At(empty, now) : "";
+        var text = string.Join(" · ", new[] { line, bag }.Where(s => s.Length > 0));
+        return text.Length > 0 ? char.ToUpper(text[0], CultureInfo.CurrentCulture) + text[1..] : text;
+    }
+
+    /// <summary>"at 8:00 PM", "tomorrow at 8:00 AM", "Thu at 8:00 AM": a time to put in a sentence.</summary>
+    public static string At(DateTime time, DateTime now) =>
+        time.Date == now.Date ? "at " + Time(time)
+        : time.Date == now.Date.AddDays(1) ? "tomorrow at " + Time(time)
+        : time.ToString("ddd", CultureInfo.CurrentCulture) + " at " + Time(time);
+
     /// <summary>"8:00 PM", "tomorrow 8:00 AM", "Thu 8:00 AM".</summary>
     public static string When(DateTime time, DateTime now) =>
         time.Date == now.Date ? Time(time)
@@ -578,7 +601,7 @@ public static class Format
     {
         var kind = reminder.Kind;
         if (kind == ReminderKind.Meal) return amount > 1 ? $"Eat about {Amounts.Format(amount, reminder.Unit)}" : "Eat";
-        if (!kind.HasAmount() || reminder.Unit.Length == 0) return kind.Verb();
+        if (!kind.HasAmount() || reminder.Unit.Length == 0 || kind == ReminderKind.IV) return kind.Verb();
         var what = Amount(amount, reminder.Unit, kind);
         return kind == ReminderKind.Drink ? $"Drink {what} of {reminder.Name.ToLowerInvariant()}" : $"{kind.Verb()} {what}".Trim();
     }

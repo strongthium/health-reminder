@@ -51,7 +51,7 @@ public sealed record PillAppearance(IReadOnlyList<string> Colors, string Shape, 
 /// <summary>What a reminder is for. The medication kinds can be looked up on DailyMed; the checks record a value.</summary>
 public enum ReminderKind
 {
-    Pill, Injection, Liquid, Inhaler, Drops, Patch, OtherMedication,
+    Pill, Injection, IV, Liquid, Inhaler, Drops, Patch, OtherMedication,
     BloodSugar, BloodPressure, Weight, OtherCheck,
     Meal, Drink, Other,
 }
@@ -65,6 +65,7 @@ public static class Kinds
     {
         ReminderKind.Pill => "Pill (tablet or capsule)",
         ReminderKind.Injection => "Injection (insulin, pen, syringe)",
+        ReminderKind.IV => "IV drip (bags to change)",
         ReminderKind.Liquid => "Liquid medicine",
         ReminderKind.Inhaler => "Inhaler",
         ReminderKind.Drops => "Eye or ear drops",
@@ -125,6 +126,7 @@ public static class Kinds
     {
         ReminderKind.Pill => form.Contains("CAPSULE", StringComparison.OrdinalIgnoreCase) ? "capsule" : "tablet",
         ReminderKind.Injection => "unit",
+        ReminderKind.IV => "bag",
         ReminderKind.Liquid => "mL",
         ReminderKind.Inhaler => "puff",
         ReminderKind.Drops => "drop",
@@ -139,6 +141,7 @@ public static class Kinds
     {
         ReminderKind.Pill => ["tablet", "capsule", "softgel", "lozenge"],
         ReminderKind.Injection => ["unit", "mL", "mg", "pen", "syringe", "dose"],
+        ReminderKind.IV => ["bag"],
         ReminderKind.Liquid => ["mL", "teaspoon", "tablespoon", "drop"],
         ReminderKind.Inhaler => ["puff", "dose"],
         ReminderKind.Drops => ["drop"],
@@ -176,6 +179,7 @@ public static class Kinds
     public static string Verb(this ReminderKind kind) => kind switch
     {
         ReminderKind.Injection => "Inject",
+        ReminderKind.IV => "Change the bag",
         ReminderKind.Inhaler => "Inhale",
         ReminderKind.Drops or ReminderKind.Patch => "Use",
         ReminderKind.BloodSugar => "Test your blood sugar",
@@ -192,6 +196,7 @@ public static class Kinds
     public static string DoneText(this ReminderKind kind) => kind switch
     {
         ReminderKind.Injection => "Injected",
+        ReminderKind.IV => "Bag changed",
         _ when kind.IsMedication() => "I took it",
         _ when kind.IsCheck() => "Save",
         ReminderKind.Meal => "I ate",
@@ -259,9 +264,13 @@ public sealed class Reminder
     /// it and doses marked taken take from it. Null when it isn't counted.</summary>
     public double? StockCount { get; set; }
     public DateTime? StockAt { get; set; }
+    /// <summary>For an IV drip: the line, the bags and how long each runs. It rings for the bags, not at times of day.</summary>
+    public IvDrip Iv { get; set; } = new();
 
-    /// <summary>How much is taken in a week, on average a day: the amounts at its times on the days it's taken.</summary>
-    public double DailyUse => Times.Sum(t => t.Amount) * Enum.GetValues<DayOfWeek>().Count(d => Days.Contains(d)) / 7.0;
+    /// <summary>How much is taken in a week, on average a day: the amounts at its times on the days it's taken; for an IV
+    /// drip, the bags a day.</summary>
+    public double DailyUse => Kind == ReminderKind.IV ? (Iv.Hours > 0 ? 24 / Iv.Hours : 0)
+        : Times.Sum(t => t.Amount) * Enum.GetValues<DayOfWeek>().Count(d => Days.Contains(d)) / 7.0;
 
     /// <summary>The amount at <paramref name="time"/>, or 1 when it has none.</summary>
     public double AmountAt(TimeOnly time) => Times.FirstOrDefault(t => t.Time == time) is { Amount: > 0 } t ? t.Amount : 1;

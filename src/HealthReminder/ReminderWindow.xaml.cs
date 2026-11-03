@@ -151,6 +151,8 @@ public sealed partial class ReminderWindow : Window
             SiteChecks.Children.Add(check);
         }
 
+        ShowDrip(reminder.Iv);
+
         Color1Box.ItemsSource = new[] { "(unknown)" }.Concat(PillView.Colors).ToList();
         Color2Box.ItemsSource = new[] { "(none)" }.Concat(PillView.Colors).ToList();
         ShapeBox.ItemsSource = new[] { "(unknown)" }.Concat(PillView.Shapes).ToList();
@@ -207,12 +209,14 @@ public sealed partial class ReminderWindow : Window
         Columns.ColumnDefinitions[0].Width = medication ? new GridLength(5, GridUnitType.Star) : new GridLength(0);
         DetailsPanel.Margin = medication ? new Thickness(8, 0, 0, 0) : new Thickness(0);
         DetailsHeading.Text = medication ? "2. Your medication" : kind.Label();
-        UnitPanel.Show(kind.HasAmount() && kind != ReminderKind.Meal && kind != ReminderKind.Drink);
+        UnitPanel.Show(kind.HasAmount() && kind is not (ReminderKind.Meal or ReminderKind.Drink or ReminderKind.IV));
         UnitBox.ItemsSource = kind.Units();
         ValueUnitPanel.Show(kind.ValueUnits().Count > 0);
         ValueUnitBox.ItemsSource = kind.ValueUnits();
         ValueUnitBox.SelectedItem = kind.ValueUnits().Contains(reminder.ValueUnit) ? reminder.ValueUnit : kind.ValueUnits().FirstOrDefault();
         SitesPanel.Show(kind == ReminderKind.Injection);
+        IvPanel.Show(kind == ReminderKind.IV);
+        TimesPanel.Show(kind != ReminderKind.IV);
         AppearanceExpander.Show(kind == ReminderKind.Pill);
         LookPanel.Show(kind == ReminderKind.Pill);
 
@@ -259,6 +263,80 @@ public sealed partial class ReminderWindow : Window
         if (TimesHeading is null) return;
         TimesHeading.Text = Kind.HasAmount() ? $"When, and how much ({Amounts.Plural(CurrentUnit)})" : "When";
         if (StockUnit is not null) StockUnit.Text = Amounts.Plural(CurrentUnit);
+    }
+
+    // ---- An IV drip --------------------------------------------------------------------------------------------
+
+    private void ShowDrip(IvDrip iv)
+    {
+        IvLineBox.ItemsSource = IvDrip.Lines;
+        IvSiteBox.ItemsSource = IvDrip.Sites;
+        IvLineBox.Text = iv.Line;
+        IvSiteBox.Text = iv.Site;
+        IvSinceBox.SelectedDate = iv.LineSince?.Date;
+        IvBagBox.Value = iv.BagMl > 0 ? iv.BagMl : null;
+        IvRateBox.Value = iv.MlPerHour > 0 ? iv.MlPerHour : null;
+        IvHoursBox.Value = iv.Hours;
+        IvWarnBox.Value = iv.WarnMinutes;
+        var started = iv.Current?.Started ?? DateTime.Now;
+        IvStartDate.SelectedDate = started.Date;
+        IvStartTime.Time = new TimeSpan(started.Hour, started.Minute, 0);
+
+        // The bag and the rate give how long it runs; how long, the start and the warning give when it rings.
+        void Rate(object? sender, EventArgs e)
+        {
+            if (IvDrip.RunHours(IvBagBox.Value ?? 0, IvRateBox.Value ?? 0) is { } hours) IvHoursBox.Value = Math.Round(Math.Max(IvDrip.ShortestRun, hours), 2);
+            ShowDripText();
+        }
+        IvBagBox.ValueChanged += Rate;
+        IvRateBox.ValueChanged += Rate;
+        IvHoursBox.ValueChanged += (_, _) => ShowDripText();
+        IvWarnBox.ValueChanged += (_, _) => ShowDripText();
+        System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TimeBox.TimeProperty, typeof(TimeBox)).AddValueChanged(IvStartTime, (_, _) => ShowDripText());
+        ShowDripText();
+    }
+
+    /// <summary>When the bag being entered was started, to the minute; null until a day is picked.</summary>
+    private DateTime? DripStart => IvStartDate.SelectedDate is { } day ? day.Date + (IvStartTime.Time ?? TimeSpan.Zero) : null;
+
+    /// <summary>The drip as it's being entered, with its bag running from the start typed.</summary>
+    private IvDrip? ReadDrip()
+    {
+        if (IvHoursBox.Value is not { } hours || hours < IvDrip.ShortestRun || DripStart is not { } start) return null;
+        var iv = new IvDrip
+        {
+            Line = (IvLineBox.Text ?? "").Trim(),
+            Site = (IvSiteBox.Text ?? "").Trim(),
+            LineSince = IvSinceBox.SelectedDate?.Date,
+            BagMl = IvBagBox.Value ?? 0,
+            MlPerHour = IvRateBox.Value ?? 0,
+            Hours = hours,
+            WarnMinutes = (int)Math.Round(IvWarnBox.Value ?? 0),
+            Bags = [.. reminder.Iv.Bags],
+        };
+        // The bag running is put right only when something about it changed: one marked changed keeps its seconds.
+        if (iv.Current is not { } current || Minute(current.Started) != start || current != iv.Bag(current.Started)) iv.Restart(start);
+        return iv;
+    }
+
+    private static DateTime Minute(DateTime time) => time.AddTicks(-(time.Ticks % TimeSpan.TicksPerMinute));
+
+    private void ShowDripText()
+    {
+        var iv = ReadDrip();
+        IvText.Text = iv?.Current is not { } bag
+            ? "Say how long a bag runs (or its size and the rate), and when this one was started."
+            : $"This bag runs out {Format.At(iv.RunsOut(bag.Started), DateTime.Now)}, and the reminder rings {Format.At(bag.Due, DateTime.Now)}. "
+              + "Marking it changed starts the next bag from then, so a bag changed late or early moves the ones after it.";
+    }
+
+    private void IvStart_Changed(object? sender, SelectionChangedEventArgs e) => ShowDripText();
+
+    private void IvNow_Click(object sender, RoutedEventArgs e)
+    {
+        var now = DateTime.Now;
+        IvStartDate.SelectedDate = now.Date;
+        IvStartTime.Time = new TimeSpan(now.Hour, now.Minute, 0);
     }
 
     // ---- On hand -----------------------------------------------------------------------------------------------
@@ -370,10 +448,13 @@ public sealed partial class ReminderWindow : Window
         UpdatePreview();
     }
 
+    /// <summary>No picture: neither one picked from the label nor the one found of the pill. One can still be picked
+    /// from the label's pictures.</summary>
     private void ClearPhoto_Click(object sender, RoutedEventArgs e)
     {
         PhotoList.SelectedItem = null;
-        PhotoStatus.Text = foundPhoto is null ? "" : "Photo from " + foundPhoto.Source + ".";
+        foundPhoto = null;
+        PhotoStatus.Text = "No picture: the drawing shows what it looks like.";
         UpdatePreview();
     }
 
@@ -524,7 +605,8 @@ public sealed partial class ReminderWindow : Window
         rxCui = "";
         monographUrl = "";
         MonographPanel.Show(false);
-        var kind = item.Kind;
+        // What's put in an IV bag is labelled an injection or a solution: it stays an IV drip.
+        var kind = Kind == ReminderKind.IV ? ReminderKind.IV : item.Kind;
         if (kind != Kind) KindBox.SelectedIndex = Array.IndexOf(Kinds.All, kind);
         var name = $"{product.Name} {product.Strength}".Trim();
         if (string.IsNullOrWhiteSpace(NameBox.Text) || NameBox.Text == autoName) NameBox.Text = autoName = name;
@@ -719,11 +801,16 @@ public sealed partial class ReminderWindow : Window
             .ToList();
         var sites = InjectionSites.All.Where(s => siteChecks[s].IsChecked == true).ToList();
         var din = (DinBox.Text ?? "").Trim();
+        // An IV drip has its bags instead of times and days.
+        var drip = kind == ReminderKind.IV;
+        var iv = drip ? ReadDrip() : null;
         var problem =
-            active && chosenTimes.Count == 0 ? "Add a time to be reminded at, or untick \"Remind me\"."
-            : active && days == DaySet.None ? "Pick at least one day."
-            : kind.HasAmount() && chosenTimes.Any(t => t.Amount <= 0) ? "Each time needs an amount above zero."
-            : chosenTimes.GroupBy(t => t.Time).Any(g => g.Count() > 1) ? "The same time is there twice."
+            drip && IvHoursBox.Value is not >= IvDrip.ShortestRun ? "Say how long a bag runs: half an hour or more."
+            : drip && iv is null ? "Say when this bag was started."
+            : !drip && active && chosenTimes.Count == 0 ? "Add a time to be reminded at, or untick \"Remind me\"."
+            : !drip && active && days == DaySet.None ? "Pick at least one day."
+            : !drip && kind.HasAmount() && chosenTimes.Any(t => t.Amount <= 0) ? "Each time needs an amount above zero."
+            : !drip && chosenTimes.GroupBy(t => t.Time).Any(g => g.Count() > 1) ? "The same time is there twice."
             : kind == ReminderKind.Injection && sites.Count == 0 ? "Tick at least one injection site."
             : kind.IsMedication() && din.Length > 0 && !HealthCanada.IsDin(din) ? "A DIN is 8 digits."
             : null;
@@ -754,8 +841,10 @@ public sealed partial class ReminderWindow : Window
             reminder.Name = name;
             reminder.Unit = kind == ReminderKind.Drink ? "mL" : kind.HasAmount() ? CurrentUnit : "";
             reminder.Notes = NotesBox.Text ?? "";
-            reminder.Times = chosenTimes;
-            reminder.Days = days;
+            // An IV drip rings for its bags, not at times of day.
+            reminder.Times = iv is null ? chosenTimes : [];
+            reminder.Days = iv is null ? days : DaySet.Every;
+            reminder.Iv = iv ?? new IvDrip();
             reminder.Active = active;
             reminder.RecordVideo = VideoBox.IsChecked == true;
             reminder.Appearance = ReadAppearance();

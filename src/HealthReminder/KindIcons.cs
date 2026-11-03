@@ -60,6 +60,19 @@ internal static class KindIcons
                 context.Pop();
                 break;
 
+            case ReminderKind.IV:
+                Round(null, 50, 7, 4, new Pen(DarkGrey, 2.5));
+                Box(White, 22, 12, 56, 58, 10);
+                Box(Water, 25, 34, 50, 33, 8, new Pen(Brushes.Transparent, 0));
+                Line(34, 21, 66, 21, new Pen(DarkGrey, 2));
+                Line(34, 27, 56, 27, new Pen(DarkGrey, 2));
+                Box(null, 22, 12, 56, 58, 10);
+                Box(Grey, 46, 70, 8, 6, 1);
+                Box(Glass, 42, 76, 16, 14, 3);
+                Round(Water, 50, 84, 2.5, new Pen(Brushes.Transparent, 0));
+                Line(50, 90, 50, 99, new Pen(DarkGrey, 2.5));
+                break;
+
             case ReminderKind.Liquid:
                 Box(White, 40, 10, 20, 14, 3);
                 Box(Amber, 43, 24, 14, 10, 2);

@@ -47,9 +47,11 @@ public sealed class AlarmItem : INotifyPropertyChanged
 
     /// <summary>The dose before this one, when it was missed; the alarm then insists more.</summary>
     public Dose? Missed { get; }
-    public string MissedText => Missed is { } missed
-        ? $"The {Format.When(missed.Due, DateTime.Now)} dose was missed. Take this one as usual; don't take two to make up for it unless your doctor or pharmacist has said to."
-        : "";
+    public string MissedText => Missed is not { } missed ? ""
+        : Kind == ReminderKind.IV ? $"The bag change due at {Format.When(missed.Due, DateTime.Now)} wasn't marked done."
+        : $"The {Format.When(missed.Due, DateTime.Now)} dose was missed. Take this one as usual; don't take two to make up for it unless your doctor or pharmacist has said to.";
+    /// <summary>An IV drip's line and its bag: "PICC line, left arm, in since Oct 24 · this bag runs out at 8:00 PM".</summary>
+    public string Drip => Kind == ReminderKind.IV ? Format.Drip(Reminder.Iv, DateTime.Now) : "";
     /// <summary>When it's running low by the count: how much is left, and to refill.</summary>
     public string SupplyText { get; } = "";
 
@@ -249,7 +251,7 @@ public sealed partial class AlarmWindow : Window
     {
         var kept = items
             .Select(item => (item, reminder: reminders.FirstOrDefault(m => m.Id == item.Reminder.Id && m.Active)))
-            .Where(x => x.reminder is not null && x.reminder.Times.Any(t => t.Time == TimeOnly.FromDateTime(x.item.Dose.Due)) && App.Current.Schedule.Rings(x.item.Dose))
+            .Where(x => x.reminder is not null && Schedule.Has(x.reminder, x.item.Dose.Due) && App.Current.Schedule.Rings(x.item.Dose))
             .Select(x =>
             {
                 var item = Item(x.item.Dose with { Reminder = x.reminder! });
@@ -370,6 +372,7 @@ public sealed partial class AlarmWindow : Window
             switch (kinds.First())
             {
                 case ReminderKind.Injection: return "Time for your injection";
+                case ReminderKind.IV: return "Time to change your IV bag";
                 case ReminderKind.Inhaler: return "Time for your inhaler";
                 case ReminderKind.BloodSugar: return "Time to test your blood sugar";
                 case ReminderKind.BloodPressure: return "Time to take your blood pressure";

@@ -68,9 +68,9 @@
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="3*" MinHeight="120" />
+              <RowDefinition Height="3*" MinHeight="40" />
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="2*" MinHeight="90" />
+              <RowDefinition Height="2*" MinHeight="32" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -145,7 +145,7 @@
 
             <Expander Grid.Row="5" x:Name="LabelPhotos" Header="Other pictures on the label" Margin="0,6,0,0">
               <StackPanel>
-                <ListBox x:Name="PhotoList" SelectionChanged="Photo_Changed" MaxHeight="200" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox x:Name="PhotoList" SelectionChanged="Photo_Changed" MaxHeight="140" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                   <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
                       <WrapPanel />
@@ -159,7 +159,6 @@
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
-                <Button Content="Don't use a picture from the label" Click="ClearPhoto_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
               </StackPanel>
             </Expander>
           </Grid>
@@ -181,9 +180,15 @@
                 <Border Width="200" Height="120" CornerRadius="10" Background="#14808080">
                   <local:PillView x:Name="Preview" Margin="10" />
                 </Border>
-                <Border x:Name="PreviewPhotoBorder" Width="200" Height="140" CornerRadius="10" Background="White" Margin="0,8,0,0">
-                  <Image x:Name="PreviewPhoto" Stretch="Uniform" />
-                </Border>
+                <StackPanel x:Name="PreviewPhotoBorder">
+                  <Border Width="200" Height="140" CornerRadius="10" Background="White" Margin="0,8,0,0">
+                    <Image x:Name="PreviewPhoto" Stretch="Uniform" />
+                  </Border>
+                  <!-- Here, where the picture is, rather than with the label's pictures: that list can be cut off in a
+                       short window. -->
+                  <Button Content="Don't use a picture" Click="ClearPhoto_Click" HorizontalAlignment="Stretch" Margin="0,6,0,0" Padding="10,4" FontSize="12"
+                          ToolTip="Show only the drawing of it. A picture can be picked again from the label's pictures on the left." />
+                </StackPanel>
               </StackPanel>
               <StackPanel Grid.Column="1" Margin="16,0,0,0">
                 <StackPanel x:Name="LookPanel">
@@ -246,24 +251,65 @@
               <ComboBox x:Name="ValueUnitBox" Width="200" HorizontalAlignment="Left" />
             </StackPanel>
 
-            <TextBlock x:Name="TimesHeading" Text="When, and how much" Style="{StaticResource Label}" />
-            <ItemsControl x:Name="TimeList">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="{x:Type local:TimeSlot}">
-                  <StackPanel Orientation="Horizontal" Margin="0,3">
-                    <local:TimeBox Time="{Binding Time}" Margin="0,0,10,0" />
-                    <local:NumberBox Value="{Binding Amount}" Increment="{Binding Step}" Minimum="0" Maximum="10000" Width="130" Margin="0,0,10,0"
-                                     Visibility="{Binding ShowAmount, Converter={StaticResource VisibleIf}}" />
-                    <Button Content="Remove" Click="RemoveTime_Click" />
-                  </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Content="+ Add a time" Click="AddTime_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
-            <TextBlock Style="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
-                       Text="Reminders at the same time ring together, and can be answered with one button." />
+            <!-- An IV drip: the line, and the bags, which ring before each runs out rather than at times of day. -->
+            <StackPanel x:Name="IvPanel">
+              <TextBlock Text="The line" Style="{StaticResource Label}" />
+              <WrapPanel>
+                <ComboBox x:Name="IvLineBox" IsEditable="True" Width="220" Margin="0,0,10,4" ToolTip="The kind of line: a PICC line, a port, an IV in the hand…" />
+                <ComboBox x:Name="IvSiteBox" IsEditable="True" Width="170" Margin="0,0,0,4" ToolTip="Which arm (or where) it goes in" />
+              </WrapPanel>
+              <WrapPanel>
+                <TextBlock Text="Put in on" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <DatePicker x:Name="IvSinceBox" Width="170" Margin="0,0,0,4" ToolTip="When the line was put in; leave it empty if you don't know" />
+              </WrapPanel>
 
-            <WrapPanel x:Name="DayPanel" Margin="0,10,0,0" />
+              <TextBlock Text="The bag" Style="{StaticResource Label}" />
+              <WrapPanel>
+                <local:NumberBox x:Name="IvBagBox" Minimum="0" Maximum="10000" Increment="50" Width="120" Margin="0,0,6,4" ToolTip="How much is in a bag, from its label" />
+                <TextBlock Text="mL, at" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <local:NumberBox x:Name="IvRateBox" Minimum="0" Maximum="5000" Increment="5" Width="120" Margin="0,0,6,4" ToolTip="The rate the pump is set to" />
+                <TextBlock Text="mL an hour" VerticalAlignment="Center" Margin="0,0,0,4" />
+              </WrapPanel>
+              <WrapPanel>
+                <TextBlock Text="Each bag runs for" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <local:NumberBox x:Name="IvHoursBox" Minimum="0.5" Maximum="168" Increment="0.5" Width="120" Margin="0,0,6,4"
+                                 ToolTip="Worked out from the bag and the rate; or type it, if you know how long a bag lasts" />
+                <TextBlock Text="hours" VerticalAlignment="Center" Margin="0,0,0,4" />
+              </WrapPanel>
+              <WrapPanel>
+                <TextBlock Text="This bag was started" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <DatePicker x:Name="IvStartDate" Width="170" Margin="0,0,8,4" SelectedDateChanged="IvStart_Changed" />
+                <local:TimeBox x:Name="IvStartTime" Margin="0,0,8,4" />
+                <Button Content="Now" Click="IvNow_Click" Padding="12,5" Margin="0,0,0,4" />
+              </WrapPanel>
+              <WrapPanel>
+                <TextBlock Text="Remind me" VerticalAlignment="Center" Margin="0,0,8,4" />
+                <local:NumberBox x:Name="IvWarnBox" Minimum="0" Maximum="240" Increment="5" Width="110" Margin="0,0,6,4" />
+                <TextBlock Text="minutes before it runs out" VerticalAlignment="Center" Margin="0,0,0,4" />
+              </WrapPanel>
+              <TextBlock x:Name="IvText" Style="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0" />
+            </StackPanel>
+
+            <StackPanel x:Name="TimesPanel">
+              <TextBlock x:Name="TimesHeading" Text="When, and how much" Style="{StaticResource Label}" />
+              <ItemsControl x:Name="TimeList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="{x:Type local:TimeSlot}">
+                    <StackPanel Orientation="Horizontal" Margin="0,3">
+                      <local:TimeBox Time="{Binding Time}" Margin="0,0,10,0" />
+                      <local:NumberBox Value="{Binding Amount}" Increment="{Binding Step}" Minimum="0" Maximum="10000" Width="130" Margin="0,0,10,0"
+                                       Visibility="{Binding ShowAmount, Converter={StaticResource VisibleIf}}" />
+                      <Button Content="Remove" Click="RemoveTime_Click" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Content="+ Add a time" Click="AddTime_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
+              <TextBlock Style="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                         Text="Reminders at the same time ring together, and can be answered with one button." />
+
+              <WrapPanel x:Name="DayPanel" Margin="0,10,0,0" />
+            </StackPanel>
 
             <StackPanel x:Name="SitesPanel">
               <TextBlock Text="Injection sites to rotate through" Style="{StaticResource Label}" />

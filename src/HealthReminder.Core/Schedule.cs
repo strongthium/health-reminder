@@ -39,9 +39,16 @@ public sealed class Schedule(Database database)
     public void Snooze(Dose dose, DateTime until) => snoozed[dose.Key] = until;
 
     /// <summary>Records the dose as taken (eaten, drunk, injected, measured), with the reading, the site and the
-    /// video of it if any.</summary>
-    public void Done(Dose dose, DateTime at, string value = "", string site = "", string video = "", string videoSha256 = "") =>
+    /// video of it if any. An IV bag changed: the new one runs from now, and the line it's on is kept with it.</summary>
+    public void Done(Dose dose, DateTime at, string value = "", string site = "", string video = "", string videoSha256 = "")
+    {
+        var reminder = dose.Reminder;
+        if (reminder.Kind == ReminderKind.IV && site.Length == 0) site = reminder.Iv.Where;
         Record(dose, new DoseRecord(DoseStatus.Taken, at, dose.Amount, value, site, video, videoSha256));
+        if (reminder.Kind != ReminderKind.IV) return;
+        reminder.Iv.Hang(at);
+        database.Save(reminder);
+    }
 
     public void Skipped(Dose dose, DateTime at) => Record(dose, new DoseRecord(DoseStatus.Skipped, at, 0, "", ""));
 
@@ -151,13 +158,25 @@ public sealed class Schedule(Database database)
     public static Dose? Next(IEnumerable<Reminder> reminders, DateTime now) =>
         Doses(reminders, now.Date, now.Date.AddDays(7)).Where(d => d.Due > now).OrderBy(d => d.Due).FirstOrDefault();
 
-    /// <summary>Every dose of the active reminders on the days from <paramref name="first"/> to <paramref name="last"/>.</summary>
+    /// <summary>Every dose of the active reminders on the days from <paramref name="first"/> to <paramref name="last"/>:
+    /// at their times on their days, or an IV drip's bag changes.</summary>
     public static IEnumerable<Dose> Doses(IEnumerable<Reminder> reminders, DateTime first, DateTime last)
     {
         foreach (var reminder in reminders.Where(m => m.Active))
+        {
+            if (reminder.Kind == ReminderKind.IV)
+            {
+                foreach (var due in reminder.Iv.Dues(first.Date, last.Date.AddDays(1)))
+                    yield return new Dose(reminder, due);
+                continue;
+            }
             for (var day = first.Date; day <= last.Date; day = day.AddDays(1))
                 if (reminder.Days.Contains(day.DayOfWeek))
                     foreach (var time in reminder.Times)
                         yield return new Dose(reminder, day + time.Time.ToTimeSpan());
+        }
     }
+
+    /// <summary>Whether the reminder, as it is now, still has this dose: its time wasn't changed or taken away.</summary>
+    public static bool Has(Reminder reminder, DateTime due) => Doses([reminder], due.Date, due.Date).Any(d => d.Due == due);
 }

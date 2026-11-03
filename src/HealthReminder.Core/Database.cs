@@ -12,8 +12,9 @@ public sealed class Database : IDisposable
     // 3: the grocery list and the cigarettes; 4: the menu and the kitchen; 5: exercise; 6: medication on hand and
     // refills, and the kitchen's stock; 8: the places in the kitchen; 9: brands and packs; 10: Claude's ideas picked for
     // a meal; 11: food eaten, logged by hand; 12: the stock by id, so that two bags of a thing can be kept apart; 13: what's
-    // been in the kitchen, kept to buy again, and the brand to buy on the list. Tables of their own that the CREATE adds.
-    private const int SchemaVersion = 13;
+    // been in the kitchen, kept to buy again, and the brand to buy on the list; 14: IV drips. Tables of their own that the
+    // CREATE adds.
+    private const int SchemaVersion = 14;
     private readonly SqliteConnection connection;
     private readonly Lock gate = new();
 
@@ -75,7 +76,15 @@ public sealed class Database : IDisposable
                 din          TEXT NOT NULL DEFAULT '',  -- Canada's Drug Identification Number
                 rx_number    TEXT NOT NULL DEFAULT '',  -- the pharmacy's prescription number
                 stock_count  REAL,                      -- how many on hand when counted (null: not counted)
-                stock_at     TEXT                       -- when it was counted
+                stock_at     TEXT,                      -- when it was counted
+                iv_line      TEXT NOT NULL DEFAULT '',  -- an IV drip's line: "PICC line"
+                iv_site      TEXT NOT NULL DEFAULT '',  -- where it goes in: "Left arm"
+                iv_since     TEXT,                      -- when it was put in
+                iv_bag_ml    REAL NOT NULL DEFAULT 0,
+                iv_rate      REAL NOT NULL DEFAULT 0,   -- mL an hour
+                iv_hours     REAL NOT NULL DEFAULT 12,  -- how long a bag runs
+                iv_warn      INTEGER NOT NULL DEFAULT 15, -- minutes before it runs out that it rings
+                iv_bags      TEXT NOT NULL DEFAULT ''   -- "started>due;...", oldest first
             );
             CREATE TABLE IF NOT EXISTS dose_log (
                 reminder_id INTEGER NOT NULL REFERENCES reminder(id) ON DELETE CASCADE,
@@ -254,6 +263,15 @@ public sealed class Database : IDisposable
                         first = min(first, excluded.first), last = max(last, excluded.last);
                 COMMIT;
                 """);
+        // 14: IV drips: the line, the bags and how long each runs.
+        AddColumn("reminder", "iv_line", "TEXT NOT NULL DEFAULT ''");
+        AddColumn("reminder", "iv_site", "TEXT NOT NULL DEFAULT ''");
+        AddColumn("reminder", "iv_since", "TEXT");
+        AddColumn("reminder", "iv_bag_ml", "REAL NOT NULL DEFAULT 0");
+        AddColumn("reminder", "iv_rate", "REAL NOT NULL DEFAULT 0");
+        AddColumn("reminder", "iv_hours", "REAL NOT NULL DEFAULT 12");
+        AddColumn("reminder", "iv_warn", "INTEGER NOT NULL DEFAULT 15");
+        AddColumn("reminder", "iv_bags", "TEXT NOT NULL DEFAULT ''");
         if (Convert.ToInt64(Scalar("SELECT count(*) FROM place"), CultureInfo.InvariantCulture) == 0)
             foreach (var place in KitchenPlace.Defaults) Save(place);
         Execute($"PRAGMA user_version = {SchemaVersion}");
@@ -307,8 +325,28 @@ public sealed class Database : IDisposable
             RxNumber = Text("rx_number"),
             StockCount = r.IsDBNull(r.GetOrdinal("stock_count")) ? null : r.GetDouble(r.GetOrdinal("stock_count")),
             StockAt = r.IsDBNull(r.GetOrdinal("stock_at")) ? null : DateTime.Parse(Text("stock_at"), CultureInfo.InvariantCulture),
+            Iv = new IvDrip
+            {
+                Line = Text("iv_line"),
+                Site = Text("iv_site"),
+                LineSince = r.IsDBNull(r.GetOrdinal("iv_since")) ? null : DateTime.Parse(Text("iv_since"), CultureInfo.InvariantCulture),
+                BagMl = r.GetDouble(r.GetOrdinal("iv_bag_ml")),
+                MlPerHour = r.GetDouble(r.GetOrdinal("iv_rate")),
+                Hours = r.GetDouble(r.GetOrdinal("iv_hours")),
+                WarnMinutes = r.GetInt32(r.GetOrdinal("iv_warn")),
+                Bags = ParseBags(Text("iv_bags")),
+            },
         };
     }
+
+    public static List<IvBag> ParseBags(string text) =>
+        text.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(b => b.Split('>'))
+            .Select(p => new IvBag(DateTime.Parse(p[0], CultureInfo.InvariantCulture), DateTime.Parse(p[1], CultureInfo.InvariantCulture)))
+            .ToList();
+
+    public static string FormatBags(IEnumerable<IvBag> bags) =>
+        string.Join(';', bags.Select(b => b.Started.ToString("s", CultureInfo.InvariantCulture) + ">" + b.Due.ToString("s", CultureInfo.InvariantCulture)));
 
     /// <summary>Adds the reminder (Id 0) or updates it; returns its id.</summary>
     public long Save(Reminder m)
@@ -320,9 +358,11 @@ public sealed class Database : IDisposable
             command.CommandText = m.Id == 0
                 ? """
                   INSERT INTO reminder (kind, name, unit, notes, times, days, active, created, planned, colors, shape, size_mm, imprint, score,
-                                        form, set_id, ndc, rxcui, label_title, photo, photo_source, sites, value_unit, record_video, din, rx_number, stock_count, stock_at)
+                                        form, set_id, ndc, rxcui, label_title, photo, photo_source, sites, value_unit, record_video, din, rx_number, stock_count, stock_at,
+                                        iv_line, iv_site, iv_since, iv_bag_ml, iv_rate, iv_hours, iv_warn, iv_bags)
                   VALUES ($kind, $name, $unit, $notes, $times, $days, $active, $created, $planned, $colors, $shape, $size, $imprint, $score,
-                          $form, $setId, $ndc, $rxcui, $title, $photo, $photoSource, $sites, $valueUnit, $recordVideo, $din, $rxNumber, $stockCount, $stockAt)
+                          $form, $setId, $ndc, $rxcui, $title, $photo, $photoSource, $sites, $valueUnit, $recordVideo, $din, $rxNumber, $stockCount, $stockAt,
+                          $ivLine, $ivSite, $ivSince, $ivBagMl, $ivRate, $ivHours, $ivWarn, $ivBags)
                   RETURNING id
                   """
                 : """
@@ -330,7 +370,8 @@ public sealed class Database : IDisposable
                       planned = $planned, colors = $colors, shape = $shape, size_mm = $size, imprint = $imprint, score = $score, form = $form,
                       set_id = $setId, ndc = $ndc, rxcui = $rxcui, label_title = $title, photo = $photo, photo_source = $photoSource,
                       sites = $sites, value_unit = $valueUnit, record_video = $recordVideo, din = $din, rx_number = $rxNumber,
-                      stock_count = $stockCount, stock_at = $stockAt
+                      stock_count = $stockCount, stock_at = $stockAt, iv_line = $ivLine, iv_site = $ivSite, iv_since = $ivSince,
+                      iv_bag_ml = $ivBagMl, iv_rate = $ivRate, iv_hours = $ivHours, iv_warn = $ivWarn, iv_bags = $ivBags
                   WHERE id = $id
                   RETURNING id
                   """;
@@ -364,7 +405,16 @@ public sealed class Database : IDisposable
             p.AddWithValue("$rxNumber", m.RxNumber.Trim());
             p.AddWithValue("$stockCount", m.StockCount is { } count ? (object)count : DBNull.Value);
             p.AddWithValue("$stockAt", m.StockAt is { } at ? at.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
-            m.Id = Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+            var iv = m.Iv;
+            p.AddWithValue("$ivLine", iv.Line.Trim());
+            p.AddWithValue("$ivSite", iv.Site.Trim());
+            p.AddWithValue("$ivSince", iv.LineSince is { } since ? since.ToString("s", CultureInfo.InvariantCulture) : DBNull.Value);
+            p.AddWithValue("$ivBagMl", iv.BagMl);
+            p.AddWithValue("$ivRate", iv.MlPerHour);
+            p.AddWithValue("$ivHours", iv.Hours);
+            p.AddWithValue("$ivWarn", iv.WarnMinutes);
+            p.AddWithValue("$ivBags", FormatBags(iv.Bags));
+            m.Id =Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
             return m.Id;
         }
     }
