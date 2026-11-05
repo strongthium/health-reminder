@@ -228,7 +228,7 @@ hand, and it says when it's time to get more.
 ## Using it
 
 Download a zip from [Releases](../../releases/latest), or take the `.exe` straight from [`public/`](public), which
-always holds the latest build: `health-reminder-win-x64-needs-dotnet.exe`, about 3 MB, for Windows 10 and 11 on x64
+always holds the latest build: `health-reminder.exe`, about 3 MB, for Windows 10 and 11 on x64
 PCs. It runs on the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed on the PC,
 which Microsoft Update keeps patched. Without it, Windows offers to download it.
 
