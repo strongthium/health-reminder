@@ -73,7 +73,7 @@
       <Border Style="{StaticResource Card}" Margin="0,0,0,12">
         <StackPanel>
           <TextBlock Text="More from Strongthium" Style="{StaticResource Heading}" Margin="0,0,0,2" />
-          <TextBlock Text="Software for running your own servers and Windows PCs, and for talking to your customers. Every one has a free edition, with no time limit." Style="{StaticResource Caption}" Margin="0,0,0,10" />
+          <TextBlock Text="Software for running your own servers and Windows PCs, for talking to your customers, and for billing your hours. Every one has a free edition, with no time limit." Style="{StaticResource Caption}" Margin="0,0,0,10" />
           <UniformGrid Columns="2">
             <StackPanel Margin="0,0,16,10">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/linux-server-firewall" RequestNavigate="Link_RequestNavigate">Strongthium Guard</Hyperlink></TextBlock>
@@ -96,8 +96,16 @@
               <TextBlock Style="{StaticResource Caption}" Text="Your own Twilio account's texts on Windows, with senders blocked by number or by country." />
             </StackPanel>
             <StackPanel Margin="0,0,0,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/time-tracking-invoicing-software" RequestNavigate="Link_RequestNavigate">Strongthium Work</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="Time tracking and invoicing for Windows: the hours you work for each client, and the invoices they make, e-mailed as PDF." />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,10">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/windows-registry-editor" RequestNavigate="Link_RequestNavigate">Strongthium Registry</Hyperlink></TextBlock>
               <TextBlock Style="{StaticResource Caption}" Text="A registry editor that says what each key and value means, and backs up every change before it's made." />
+            </StackPanel>
+            <StackPanel Margin="0,0,0,10">
+              <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/cfml-server" RequestNavigate="Link_RequestNavigate">Strongthium DotCF</Hyperlink></TextBlock>
+              <TextBlock Style="{StaticResource Caption}" Text="A CFML server for Windows and Linux: Adobe ColdFusion and Lucee applications on .NET, web server and all, in one program." />
             </StackPanel>
             <StackPanel Margin="0,0,16,0">
               <TextBlock FontWeight="SemiBold"><Hyperlink NavigateUri="https://strongthium.com/video-conferencing-dial-up-modem" RequestNavigate="Link_RequestNavigate">Strongthium Convey</Hyperlink></TextBlock>

@@ -17,7 +17,9 @@ evidence.
 
 It runs on Windows 10 and 11, is one file with nothing to install, and keeps everything on your computer.
 
-![The reminder](docs/alarm.png)
+<img src="docs/alarm.png" width="68%" alt="The reminder">
+
+**[The manual](docs/README.md)** goes through every window, with what each part does and how to use it.
 
 When something is due, it comes up in the middle of the screen, over everything, with a sound, until it's answered.
 Here the dose of Adalat before this one was missed, so this one insists harder and says so, and there are 3 tablets
@@ -36,7 +38,7 @@ The day by time, with what became of each (done, missed, still to come), and abo
 happening in the kitchen: take the chicken out of the freezer, change its thawing water, start cooking. It follows
 Windows' light or dark mode and accent colour.
 
-<img src="docs/today-dark.png" alt="Today, dark" width="70%">
+![Today, dark](docs/today-dark.png)
 
 ### Reminders and medication
 
@@ -93,12 +95,12 @@ The week's shopping in the packs things are sold in, with what's left over: what
 With **Help from Claude** on, three ideas from what's in your kitchen, with what you'd need to buy (a sample answer
 here).
 
-<img src="docs/alarm-ideas.png" alt="Other ideas from my kitchen, on a meal's alarm" width="60%">
+<img src="docs/alarm-ideas.png" width="68%" alt="Other ideas from my kitchen, on a meal's alarm">
 
 When it's time to eat, the meal's alarm asks for other ideas from what you have; **Have this** makes one the meal
 (a sample answer here too).
 
-<img src="docs/kitchen-choose.png" alt="What do you feel like for dinner?" width="49%"> <img src="docs/kitchen-thaw.png" alt="Take the steak out of the freezer" width="49%">
+<img src="docs/kitchen-choose.png" width="53%" alt="What do you feel like for dinner?"> <img src="docs/kitchen-thaw.png" width="53%" alt="Take the steak out of the freezer">
 
 Kitchen alerts: what you feel like, for a meal left to the day; and taking the steak out of the freezer the night
 before, timed back from the meal.
@@ -128,11 +130,11 @@ log) or thrown out. **Search** finds things on the list and in the
 kitchen, and something new put away by hand asks where it goes. **Bought before** keeps what's been in the kitchen after
 it's used up, to put the same thing back on the list.
 
-<img src="docs/kitchen-picture.png" alt="Picking a thing's picture by kind, and its colour" width="60%">
+<img src="docs/kitchen-picture.png" width="62%" alt="Picking a thing's picture by kind, and its colour">
 
 Clicking a picture: another picture, by kind (containers, drinks, meat, bread…), and another colour.
 
-<img src="docs/kitchen-check.png" alt="Time to check the kitchen" width="60%">
+<img src="docs/kitchen-check.png" width="49%" alt="Time to check the kitchen">
 
 Once a week, when something's in doubt, a few minutes to count it.
 
@@ -146,7 +148,7 @@ Today's session, going out or staying in, with what you'll need; below it, the w
 
 The plan: the days, the time, how long, where you're starting from, and what equipment you have (none is needed).
 
-<img src="docs/exercise-alert.png" alt="Time to exercise" width="56%"> <img src="docs/workout.png" alt="Workout steps" width="40%">
+<img src="docs/exercise-alert.png" width="51%" alt="Time to exercise"> <img src="docs/workout.png" width="40%" alt="Workout steps">
 
 The alert at the time, and the steps with their timers.
 
@@ -161,7 +163,7 @@ when the air clears.
 
 Cutting down while the body recalibrates: one change a week, each with why it helps and how strong the evidence is.
 
-<img src="docs/smoke-button.png" alt="The smoking button" width="80">
+<img src="docs/smoke-button.png" width="8%" alt="The smoking button">
 
 The button that stays on top of everything: a click logs one, and the number is today's count.
 
@@ -178,7 +180,7 @@ A bar a day for the reminders done, skipped and missed, the cigarettes, the time
 calories, over the last 7, 14 or 30 days. **Print** puts them on paper, or in a PDF, to take to a doctor. **Stop
 tracking**, in **Settings**, is for when you're not following it for a while, and offers to start the stats afresh.
 
-<img src="docs/log-food.png" alt="Log food" width="60%">
+<img src="docs/log-food.png" width="62%" alt="Log food">
 
 Food logged by hand, from the kitchen (it comes off what you have) or eaten out, with about how many calories.
 
@@ -193,7 +195,7 @@ A sound for each group, getting louder, and how hard a reminder insists.
 The camera for video evidence, the units for drinks and groceries, how cold the fridge and freezer are, and Help from
 Claude.
 
-<img src="docs/close.png" alt="Keep reminding you?" width="60%">
+<img src="docs/close.png" width="45%" alt="Keep reminding you?">
 
 Closing the window asks whether to keep running in the tray.
 
@@ -656,9 +658,11 @@ it, for anyone who wants a bridge on hard days.
 
 ## About and updates
 
+![About](docs/about.png)
+
 **About** (the last page down the side) says who makes `health-reminder`, with links to Strongthium, and asks GitHub whether there's a newer version. If there is, **Update** downloads the release, checks it against the release's `SHA256SUMS`, replaces the program and starts it again. Your reminders and history are in their own folder, and stay as they are. If the program's folder can't be changed without an administrator, it says so, and **What's new** leads to the release to download by hand. The checksums come with the release, so they catch a damaged download, not a tampered release.
 
-GitHub is asked only when About is opened, again if it's still open an hour later, or when **Check again** is pressed. `api.github.com` sees that the question came from your address, and which program and version asked.
+GitHub is asked when About is first opened, after that only when it's opened an hour or more after the last answer, and when **Check again** is pressed. `api.github.com` sees that the question came from your address, and which program and version asked.
 
 ## Your data
 
@@ -710,9 +714,75 @@ dotnet run --project src/HealthReminder
 3. publishes release `v<VERSION>` with its zip and `SHA256SUMS`. A version is released once: to release
    again, raise it first (`build.ps1 -Bump revision`).
 
+## Strongthium open-source tools
+
+The other free, MIT-licensed tools from Strongthium Labs, each built by GitHub Actions from its source at [github.com/strongthium](https://github.com/strongthium):
+
+<table>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/emudhra-security-patch"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/certificate.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/certificate.svg" width="48" height="48" alt="Strongthium eMudhra Security Patch icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/emudhra-security-patch"><b>Strongthium eMudhra Security Patch</b></a><br>
+      <sub><b>Certificate trust-store patch for Windows and Linux.</b> Finds eMudhra's G3B and G3C intermediate CAs, and the roots above them, and distrusts them.</sub>
+    </td>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/folder-size"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/treemap.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/treemap.svg" width="48" height="48" alt="Strongthium Folder Size icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/folder-size"><b>Strongthium Folder Size</b></a><br>
+      <sub><b>Fast disk space analyzer for Windows.</b> Every folder added up, largest first, as a tree, a treemap, the largest files and the space by type.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/host-dossier"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/dossier.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/dossier.svg" width="48" height="48" alt="Strongthium Host Dossier icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/host-dossier"><b>Strongthium Host Dossier</b></a><br>
+      <sub><b>Domain and IP lookup tool for Windows and Linux.</b> WHOIS, DNS, TLS, open ports and every mail record of a domain or an address, in one report.</sub>
+    </td>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/outbound-watch"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/outbound.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/outbound.svg" width="48" height="48" alt="Strongthium Outbound Watch icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/outbound-watch"><b>Strongthium Outbound Watch</b></a><br>
+      <sub><b>Outbound connection monitor for Windows.</b> Where every program on your PC connects to, live and as history, and a warning when one goes somewhere new.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/raw-convert"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/camera.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/camera.svg" width="48" height="48" alt="Strongthium RAW Convert icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/raw-convert"><b>Strongthium RAW Convert</b></a><br>
+      <sub><b>Batch CR2 to PNG and TIFF converter for Windows.</b> Folders of Canon RAW photos made lossless PNG or TIFF at full size, with the date, camera and GPS kept.</sub>
+    </td>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/video-dispatch"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/video.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/video.svg" width="48" height="48" alt="Strongthium Video Dispatch icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/video-dispatch"><b>Strongthium Video Dispatch</b></a><br>
+      <sub><b>TikTok and YouTube uploader and video editor for Windows.</b> One video queued to TikTok, YouTube and Shorts, cut and trimmed with Windows' own tools.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="64" align="center" valign="top">
+      <a href="https://github.com/strongthium/webdav-server"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/dark/webdav.svg"><img src="https://raw.githubusercontent.com/strongthium/.github/main/profile/icons/light/webdav.svg" width="48" height="48" alt="Strongthium WebDAV Server icon"></picture></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/strongthium/webdav-server"><b>Strongthium WebDAV Server</b></a><br>
+      <sub><b>Self-hosted WebDAV server for Linux and Windows.</b> Files by user or by path, Nextcloud-compatible, with bans and IP, ASN and country whitelists.</sub>
+    </td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
 ## More from Strongthium
 
-Strongthium Labs also makes software for running your own servers and Windows PCs, and for talking to your customers, at [strongthium.com](https://strongthium.com):
+Strongthium Labs also makes software for running your own servers and Windows PCs, for talking to your customers, and for billing your hours, at [strongthium.com](https://strongthium.com):
 
 <table>
   <tr>

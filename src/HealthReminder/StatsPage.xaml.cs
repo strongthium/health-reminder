@@ -10,7 +10,7 @@ public sealed class NoteRow(StatNote note)
 {
     public string Text => note.Text;
     public string Label => note.Tone switch { NoteTone.Warning => "Worth a look", NoteTone.Heads => "Heads-up", _ => "Good" };
-    public string Icon => note.Tone switch { NoteTone.Warning => "", NoteTone.Heads => "", _ => "" };
+    public string Icon => note.Tone switch { NoteTone.Warning => "\uE7BA", NoteTone.Heads => "\uE946", _ => "\uE73E" };
     public Brush Brush => note.Tone switch { NoteTone.Warning => StatsReport.MissedBrush, NoteTone.Heads => StatsReport.HeadsBrush, _ => StatsReport.DoneBrush };
 }
 
